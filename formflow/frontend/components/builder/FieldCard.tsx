@@ -42,7 +42,7 @@ export function FieldCard({
       className={cn(
         "group rounded-xl border bg-white shadow-sm transition",
         selected
-          ? "border-gray-900 ring-1 ring-gray-900/10"
+          ? "border-blue-500 ring-2 ring-blue-200"
           : "border-gray-200 hover:border-gray-300",
         isDragging && "z-40 opacity-80 shadow-lg"
       )}

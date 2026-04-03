@@ -11,9 +11,10 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 type FormRendererProps = {
   formId: string;
   schema: FormSchema;
+  previewMode?: boolean;
 };
 
-export function FormRenderer({ formId, schema }: FormRendererProps) {
+export function FormRenderer({ formId, schema, previewMode }: FormRendererProps) {
   const [answers, setAnswers] = useState<
     Record<string, string | string[] | undefined>
   >({});
@@ -49,6 +50,7 @@ export function FormRenderer({ formId, schema }: FormRendererProps) {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (previewMode) return;
     setError(null);
     const v = validate();
     if (v) {
@@ -131,7 +133,7 @@ export function FormRenderer({ formId, schema }: FormRendererProps) {
 
       <Button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || previewMode}
         className="h-12 w-full rounded-xl text-base shadow-sm sm:w-auto sm:min-w-[160px]"
       >
         {submitting ? (
@@ -139,6 +141,8 @@ export function FormRenderer({ formId, schema }: FormRendererProps) {
             <Loader2 className="h-4 w-4 animate-spin" />
             Submitting
           </span>
+        ) : previewMode ? (
+          "Submit (Preview)"
         ) : (
           "Submit"
         )}
