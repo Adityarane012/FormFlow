@@ -28,8 +28,14 @@ import {
 import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/utils";
 
-export default function DraftsPage() {
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogOut } from "lucide-react";
+
+function DraftsPageContent() {
+  const { user, logout } = useAuth();
   const [drafts, setDrafts] = useState<Form[]>([]);
+  // ...
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"updated" | "created" | "alpha">("updated");
@@ -42,12 +48,13 @@ export default function DraftsPage() {
 
   useEffect(() => {
     loadDrafts();
-  }, []);
+  }, [user]);
 
   async function loadDrafts() {
+    if (!user) return;
     setIsLoading(true);
     const allForms = await getForms();
-    setDrafts(allForms.filter((f) => f.status === "draft"));
+    setDrafts(allForms.filter((f) => f.status === "draft" && f.created_by === user.id));
     setIsLoading(false);
   }
 
@@ -103,10 +110,15 @@ export default function DraftsPage() {
             My Drafts
           </h1>
         </div>
-        <Button onClick={() => router.push("/templates")} size="sm" className="gap-2 rounded-xl">
-          <Plus className="h-4 w-4" />
-          Create Form
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => logout()} className="h-9 w-9 rounded-xl text-muted-foreground hover:text-red-500">
+            <LogOut className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => router.push("/templates")} size="sm" className="gap-2 rounded-xl">
+            <Plus className="h-4 w-4" />
+            Create Form
+          </Button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-6xl p-6">
@@ -293,5 +305,12 @@ function MousePointer2(props: any) {
       <path d="M4.037 4.437l14.413 7.227c.707.355.694 1.36-.023 1.693l-4.524 2.102-2.102 4.524c-.333.717-1.338.73-1.693.023L2.88 5.593a.81.81 0 0 1 1.157-1.156z" />
       <path d="M13 13l4 4" />
     </svg>
+  );
+}
+export default function DraftsPage() {
+  return (
+    <AuthGuard>
+       <DraftsPageContent />
+    </AuthGuard>
   );
 }

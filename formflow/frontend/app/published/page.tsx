@@ -12,9 +12,8 @@ import {
   Plus, 
   Search, 
   Clock, 
-  X,
-  LayoutGrid,
-  CheckCircle2
+  CheckCircle2,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +24,11 @@ import {
 } from "@/lib/dataService";
 import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/utils";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { useAuth } from "@/contexts/AuthContext";
 
-export default function PublishedPage() {
+function PublishedPageContent() {
+  const { user, logout } = useAuth();
   const [publishedForms, setPublishedForms] = useState<Form[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,12 +38,13 @@ export default function PublishedPage() {
 
   useEffect(() => {
     loadPublishedForms();
-  }, []);
+  }, [user]);
 
   async function loadPublishedForms() {
+    if (!user) return;
     setIsLoading(true);
     const allForms = await getForms();
-    setPublishedForms(allForms.filter((f) => f.status === "published"));
+    setPublishedForms(allForms.filter((f) => f.status === "published" && f.created_by === user.id));
     setIsLoading(false);
   }
 
@@ -91,14 +94,18 @@ export default function PublishedPage() {
             Live Forms
           </h1>
         </div>
-        <Button onClick={() => router.push("/templates")} size="sm" className="gap-2 rounded-xl">
-          <Plus className="h-4 w-4" />
-          Create Form
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => logout()} className="h-9 w-9 rounded-xl text-muted-foreground hover:text-red-500">
+                <LogOut className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => router.push("/templates")} size="sm" className="gap-2 rounded-xl">
+                <Plus className="h-4 w-4" />
+                Create Form
+            </Button>
+        </div>
       </header>
 
       <main className="mx-auto max-w-6xl p-6">
-        {/* Search and Sort Toolbar */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -113,7 +120,7 @@ export default function PublishedPage() {
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Sort by:</span>
             <select 
-              className="h-9 rounded-xl border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-9 rounded-xl border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-medium"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
             >
@@ -139,32 +146,25 @@ export default function PublishedPage() {
             <p className="mt-2 text-sm text-muted-foreground max-w-xs mx-auto">
               {searchQuery ? "Try refining your search query." : "Publish a draft to see it live here."}
             </p>
-            {!searchQuery && (
-              <Button onClick={() => router.push("/drafts")} variant="outline" className="mt-6 rounded-xl border-gray-200">
-                View My Drafts
-              </Button>
-            )}
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredAndSortedForms.map((form) => (
               <div 
                 key={form.id} 
-                className="group flex flex-col rounded-3xl border border-border bg-card p-6 shadow-sm transition-all hover:border-green-500/20 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(255,255,255,0.02)] relative overflow-hidden"
+                className="group flex flex-col rounded-3xl border border-border bg-card p-6 shadow-sm transition-all hover:border-green-500/20 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden"
               >
-                {/* Visual indicator bar */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-green-500 opacity-30" />
                 
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex-1 overflow-hidden">
                     <h3 className="font-bold text-foreground truncate">{form.title || "Untitled Form"}</h3>
-                    <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
+                    <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       Updated {formatRelativeTime(form.updated_at)}
                     </div>
                   </div>
-                  <div className="rounded-lg bg-green-100/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-600 dark:bg-green-950/40 dark:text-green-400 flex items-center gap-1">
-                    <div className="h-1 w-1 rounded-full bg-green-600 dark:bg-green-400 animate-pulse" />
+                  <div className="rounded-lg bg-green-100/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-600 dark:bg-green-950/40 dark:text-green-400">
                     Live
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export default function PublishedPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-9 gap-1.5 rounded-xl text-xs font-semibold border-gray-200 dark:border-border"
+                    className="h-9 gap-1.5 rounded-xl text-xs font-semibold"
                     onClick={() => router.push(`/dashboard/${form.id}`)}
                   >
                     <BarChart3 className="h-3.5 w-3.5" />
@@ -182,7 +182,7 @@ export default function PublishedPage() {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="h-9 gap-1.5 rounded-xl text-xs font-semibold border-gray-200 dark:border-border"
+                    className="h-9 gap-1.5 rounded-xl text-xs font-semibold"
                     asChild
                   >
                     <a href={`/form/${form.id}`} target="_blank" rel="noopener noreferrer">
@@ -202,7 +202,7 @@ export default function PublishedPage() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-9 gap-1.5 rounded-xl text-xs font-bold text-muted-foreground hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
+                    className="h-9 gap-1.5 rounded-xl text-xs font-bold text-muted-foreground hover:text-red-500"
                     onClick={() => handleUnpublish(form.id)}
                   >
                     <Archive className="h-3.5 w-3.5" />
@@ -216,4 +216,12 @@ export default function PublishedPage() {
       </main>
     </div>
   );
+}
+
+export default function PublishedPage() {
+    return (
+        <AuthGuard>
+            <PublishedPageContent />
+        </AuthGuard>
+    );
 }

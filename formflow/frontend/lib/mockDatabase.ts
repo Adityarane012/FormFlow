@@ -3,12 +3,22 @@
 
 const FORMS_KEY = "formflow_forms";
 const RESPONSES_KEY = "formflow_responses";
+const USERS_KEY = "formflow_users";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  created_at: number;
+}
 
 export interface Form {
   id: string;
   title: string;
   schema: any;
   status: "draft" | "published";
+  created_by?: string;
   created_at: number;
   updated_at: number;
 }
@@ -28,8 +38,36 @@ if (typeof window !== "undefined") {
   if (!localStorage.getItem(RESPONSES_KEY)) {
     localStorage.setItem(RESPONSES_KEY, JSON.stringify([]));
   }
+  if (!localStorage.getItem(USERS_KEY)) {
+    localStorage.setItem(USERS_KEY, JSON.stringify([]));
+  }
 }
 
+// User methods
+export const getUsers = (): User[] => {
+  if (typeof window === "undefined") return [];
+  const local = localStorage.getItem(USERS_KEY);
+  return local ? JSON.parse(local) : [];
+};
+
+export const findUserByEmail = (email: string): User | null => {
+  const users = getUsers();
+  return users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
+};
+
+export const saveUser = (user: Omit<User, "id" | "created_at">): User => {
+  const users = getUsers();
+  const newUser: User = {
+    ...user,
+    id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
+    created_at: Date.now(),
+  };
+  users.push(newUser);
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  return newUser;
+};
+
+// Form methods
 export const getForms = (): Form[] => {
   if (typeof window === "undefined") return [];
   const local = localStorage.getItem(FORMS_KEY);

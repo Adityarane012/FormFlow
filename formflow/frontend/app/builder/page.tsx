@@ -57,6 +57,7 @@ const FIELD_ICONS: Record<FieldType, any> = {
 };
 
 function BuilderPageContent() {
+  const { user } = useAuth();
   const { 
     schema, 
     addField, 
@@ -118,7 +119,8 @@ function BuilderPageContent() {
         res = await createForm({ 
           title: schema.title, 
           schema, 
-          status: newStatus 
+          status: newStatus,
+          created_by: user?.id
         });
         setFormId(res.id);
         setStatus(newStatus);
@@ -398,16 +400,15 @@ function BuilderPageContent() {
   );
 }
 
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { useAuth } from "@/contexts/AuthContext";
+
 export default function BuilderPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen items-center justify-center bg-gray-50 text-sm text-gray-500">
-          Loading builder…
-        </div>
-      }
-    >
-      <BuilderPageContent />
-    </Suspense>
+    <AuthGuard>
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading builder...</div>}>
+        <BuilderPageContent />
+      </Suspense>
+    </AuthGuard>
   );
 }

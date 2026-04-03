@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 import { FORM_TEMPLATES } from "@/lib/formTemplates";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+import { useAuth } from "@/contexts/AuthContext";
+import { LogOut } from "lucide-react";
+
 export default function HomePage() {
+  const { user, logout } = useAuth();
   const router = useRouter();
 
   return (
@@ -24,15 +28,31 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
-            <Link href="/published">My published</Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
-            <Link href="/drafts">My drafts</Link>
-          </Button>
-          <Button asChild variant="secondary" size="sm" className="rounded-xl font-medium">
-            <Link href="/templates">Open builder</Link>
-          </Button>
+          {user ? (
+            <>
+              <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
+                <Link href="/published">My published</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
+                <Link href="/drafts">My drafts</Link>
+              </Button>
+              <Button asChild variant="secondary" size="sm" className="rounded-xl font-medium">
+                <Link href="/templates">Open builder</Link>
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => logout()} className="h-9 w-9 rounded-xl text-muted-foreground hover:text-red-500">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                 <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild variant="secondary" size="sm" className="rounded-xl font-medium">
+                 <Link href="/register">Sign up</Link>
+              </Button>
+            </>
+          )}
         </div>
       </header>
 

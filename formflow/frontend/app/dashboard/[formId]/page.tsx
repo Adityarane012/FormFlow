@@ -9,7 +9,12 @@ import { getFormById, getResponses, Form, FormResponse } from "@/lib/dataService
 import { cn } from "@/lib/utils";
 import { ResponseCharts } from "@/components/dashboard/ResponseCharts";
 
-export default function DashboardPage() {
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogOut } from "lucide-react";
+
+function DashboardPageContent() {
+  const { user, logout } = useAuth();
   const { formId } = useParams() as { formId: string };
   const [form, setForm] = useState<Form | null>(null);
   const [responses, setResponses] = useState<FormResponse[]>([]);
@@ -21,12 +26,20 @@ export default function DashboardPage() {
         getFormById(formId),
         getResponses(formId)
       ]);
+      
+      // Ownership check: dashboard should only be accessible by form owner
+      if (formData && user && formData.created_by !== user.id) {
+          setForm(null);
+          setIsLoading(false);
+          return;
+      }
+
       setForm(formData);
       setResponses(responseData);
       setIsLoading(false);
     }
     loadData();
-  }, [formId]);
+  }, [formId, user]);
 
   const stats = useMemo(() => {
     if (responses.length === 0) return { count: 0, last: "No responses yet" };
@@ -38,14 +51,14 @@ export default function DashboardPage() {
   }, [responses]);
 
   if (isLoading) return <div className="flex min-h-screen items-center justify-center">Loading dashboard...</div>;
-  if (!form) return <div className="flex min-h-screen items-center justify-center text-muted-foreground font-medium">Form not found.</div>;
+  if (!form) return <div className="flex min-h-screen items-center justify-center text-muted-foreground font-medium">Form not found or access denied.</div>;
 
   return (
     <div className="min-h-screen bg-muted/30 font-sans pb-12 dark:bg-background">
       <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl">
-            <Link href="/builder">
+            <Link href="/published">
               <ChevronLeft className="h-5 w-5 text-muted-foreground" />
             </Link>
           </Button>
@@ -56,6 +69,9 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => logout()} className="h-9 w-9 rounded-xl text-muted-foreground hover:text-red-500">
+                <LogOut className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="sm" className="gap-2 rounded-xl border-gray-200 dark:border-border font-medium" onClick={() => {
                 const csv = [
                     form.schema.fields.map((f: any) => f.label).join(","),
@@ -78,6 +94,7 @@ export default function DashboardPage() {
             </Button>
         </div>
       </header>
+      {/* ... rest of the JSX */}
 
       <main className="mx-auto max-w-6xl p-6 space-y-8">
         {/* Stats Grid */}
@@ -164,4 +181,12 @@ function StatCard({ title, value, icon: Icon, color, bgColor, className }: any) 
       </div>
     </div>
   );
+}
+
+export default function DashboardPage() {
+    return (
+        <AuthGuard>
+            <DashboardPageContent />
+        </AuthGuard>
+    );
 }
