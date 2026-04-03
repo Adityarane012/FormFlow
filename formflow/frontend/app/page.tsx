@@ -24,6 +24,9 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
+            <Link href="/drafts">My drafts</Link>
+          </Button>
           <Button asChild variant="secondary" size="sm">
             <Link href="/builder">Open builder</Link>
           </Button>

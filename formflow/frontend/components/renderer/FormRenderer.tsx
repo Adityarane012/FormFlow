@@ -5,7 +5,7 @@ import type { FormField, FormSchema } from "@shared/schemaTypes";
 import { isFieldVisible } from "@/lib/conditional";
 import { FieldRenderer } from "@/components/renderer/FieldRenderer";
 import { Button } from "@/components/ui/button";
-import { apiPost } from "@/lib/api";
+import { createResponse } from "@/lib/dataService";
 import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 
 type FormRendererProps = {
@@ -66,8 +66,8 @@ export function FormRenderer({ formId, schema, previewMode }: FormRendererProps)
     }
     setSubmitting(true);
     try {
-      await apiPost("/responses", {
-        formId,
+      await createResponse({
+        form_id: formId,
         answers: payload,
       });
       setDone(true);

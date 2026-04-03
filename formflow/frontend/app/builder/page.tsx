@@ -42,7 +42,8 @@ import { FieldSettingsPanel } from "@/components/builder/FieldSettingsPanel";
 import { useFormBuilder } from "@/hooks/useFormBuilder";
 import { FormField, FieldType } from "@shared/schemaTypes";
 import { cn } from "@/lib/utils";
-import { createForm, updateForm } from "@/lib/forms";
+import { createForm, updateForm, getFormById } from "@/lib/dataService";
+import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const FIELD_ICONS: Record<FieldType, any> = {
@@ -71,7 +72,17 @@ function BuilderPageContent() {
 
   useEffect(() => {
     const templateId = searchParams.get("template");
-    if (templateId && FORM_TEMPLATES[templateId]) {
+    const editId = searchParams.get("id");
+
+    if (editId) {
+      setFormId(editId);
+      getFormById(editId).then(existingForm => {
+        if (existingForm) {
+          setSchema(existingForm.schema);
+          setStatus(existingForm.status);
+        }
+      });
+    } else if (templateId && FORM_TEMPLATES[templateId]) {
       setSchema(FORM_TEMPLATES[templateId]);
     } else {
       // Try to restore from localStorage (returning from preview)
@@ -92,24 +103,35 @@ function BuilderPageContent() {
   
   const router = useRouter();
   const [formId, setFormId] = useState<string | null>(null);
+  const [status, setStatus] = useState<"draft" | "published">("draft");
   const [isSaving, setIsSaving] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
 
-  async function handleSave() {
+  async function handleSave(newStatus: "draft" | "published" = "draft") {
     try {
       setIsSaving(true);
-      let currentId = formId;
-      if (currentId) {
-        await updateForm(currentId, schema);
+      let res;
+      if (formId) {
+        res = await updateForm(formId, { schema, status: newStatus });
+        setStatus(newStatus);
       } else {
-        currentId = await createForm(schema);
-        setFormId(currentId);
+        res = await createForm({ 
+          title: schema.title, 
+          schema, 
+          status: newStatus 
+        });
+        setFormId(res.id);
+        setStatus(newStatus);
       }
-      return currentId;
+
+      if (newStatus === "draft") {
+        toast.success("Draft saved");
+      }
+      
+      return res?.id || formId;
     } catch (err) {
       console.error("Save error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      alert(`Failed to save the form.\n\nError: ${errorMessage}`);
+      toast.error("Failed to save the form.");
       return null;
     } finally {
       setIsSaving(false);
@@ -117,7 +139,7 @@ function BuilderPageContent() {
   }
 
   async function handlePublish() {
-    const id = await handleSave();
+    const id = await handleSave("published");
     if (id) {
       setShowPublishModal(true);
     }
@@ -203,10 +225,43 @@ function BuilderPageContent() {
                   onChange={(e) => updateTitle(e.target.value)}
                   placeholder="Enter form title…"
                />
-               <div className="flex h-6 w-9 items-center justify-center rounded-lg bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                 Auto
+             </div>
+             <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-muted/50 border border-border">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Status:</span>
+                <div className={cn(
+                  "h-2 w-2 rounded-full",
+                  status === "published" ? "bg-green-500 animate-pulse" : "bg-orange-400"
+                )} />
+                <span className="text-[11px] font-semibold capitalize text-foreground">
+                  {status}
+                </span>
+             </div>
+             {status === "published" && formId && (
+               <div className="hidden lg:flex items-center gap-3 ml-2 border-l pl-4">
+                 <Link 
+                   href={`/form/${formId}`} 
+                   target="_blank"
+                   className="text-[10px] font-medium text-muted-foreground hover:text-foreground underline flex items-center gap-1"
+                 >
+                   Public Link <ExternalLink className="h-2.5 w-2.5" />
+                 </Link>
+                 <button 
+                   onClick={() => {
+                     navigator.clipboard.writeText(`${window.location.origin}/form/${formId}`);
+                     toast.success("Link copied!");
+                   }}
+                   className="text-[10px] font-medium text-muted-foreground hover:text-foreground underline flex items-center gap-1"
+                 >
+                   Copy <Copy className="h-2.5 w-2.5" />
+                 </button>
+                 <Link 
+                   href={`/dashboard/${formId}`} 
+                   className="text-[10px] font-medium text-muted-foreground hover:text-foreground underline flex items-center gap-1"
+                 >
+                   Dashboard <MousePointer2 className="h-2.5 w-2.5" />
+                 </Link>
                </div>
-            </div>
+             )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -219,7 +274,7 @@ function BuilderPageContent() {
               Preview
             </Button>
             <Button 
-              onClick={handleSave} 
+              onClick={() => handleSave("draft")} 
               disabled={isSaving} 
               variant="outline" 
               size="sm" 
