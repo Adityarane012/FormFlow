@@ -1,0 +1,20 @@
+{
+  "name": "formflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FormFlow — Tally-like No-Code Form Builder",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n frontend,backend -c cyan,magenta \"npm run dev -w formflow-frontend\" \"npm run dev -w formflow-backend\"",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "build": "npm run build -w formflow-frontend",
+    "start": "concurrently \"npm run start -w formflow-frontend\" \"npm run start -w formflow-backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

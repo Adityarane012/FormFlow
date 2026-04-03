@@ -1,0 +1,35 @@
+{
+  "title": "Customer Feedback",
+  "fields": [
+    {
+      "id": "q1",
+      "type": "text",
+      "label": "Name",
+      "required": true
+    },
+    {
+      "id": "q2",
+      "type": "radio",
+      "label": "Would you recommend us?",
+      "required": true,
+      "options": ["Yes", "No"]
+    },
+    {
+      "id": "q3",
+      "type": "text",
+      "label": "What could we improve?",
+      "required": false,
+      "showIf": {
+        "field": "q2",
+        "equals": "No"
+      }
+    },
+    {
+      "id": "q4",
+      "type": "select",
+      "label": "Overall experience",
+      "required": true,
+      "options": ["Good", "Average", "Bad"]
+    }
+  ]
+}
