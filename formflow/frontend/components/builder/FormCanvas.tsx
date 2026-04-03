@@ -15,6 +15,7 @@ interface FormCanvasProps {
   selectedFieldId?: string | null;
   onSelect?: (id: string) => void;
   onRemove?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
   onUpdate?: (id: string, updates: Partial<FormField>) => void;
 }
 
@@ -23,6 +24,7 @@ export function FormCanvas({
   selectedFieldId,
   onSelect,
   onRemove,
+  onDuplicate,
   onUpdate,
 }: FormCanvasProps) {
   const { setNodeRef, isOver } = useDroppable({
@@ -36,14 +38,20 @@ export function FormCanvas({
     <main 
       ref={setNodeRef}
       className={cn(
-        "flex-1 bg-gray-50 flex flex-col items-center p-12 overflow-y-auto min-h-screen transition-colors",
-        isOver && "bg-gray-100"
+        "flex-1 bg-[#fbfbfb] flex flex-col items-center p-12 overflow-y-auto min-h-screen transition-colors block relative",
+        isOver && "bg-blue-50/50"
       )}
     >
-      <div className="w-full max-w-2xl bg-white rounded-3xl border border-gray-200 shadow-sm min-h-[800px] flex flex-col p-1 mb-20 relative">
-        <div className="p-8 pb-4">
-          <div className="flex bg-gray-900 h-9 w-9 items-center justify-center rounded-xl shadow-md border border-white -mt-12 mb-4 mx-auto">
-             <LayoutGrid className="h-4 w-4 text-white" strokeWidth={1.5} />
+      {/* Subtle Dot Grid Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-60" />
+
+      <div className="w-full max-w-2xl bg-white/90 backdrop-blur-xl rounded-[2rem] border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-h-[800px] flex flex-col p-1 mb-20 relative z-10 transition-all">
+        {/* Glow effect behind canvas */}
+        <div className="absolute -inset-[1px] rounded-[2rem] bg-gradient-to-b from-gray-100 to-white -z-10 blur-[2px]" />
+
+        <div className="p-8 pb-4 relative z-10">
+          <div className="flex bg-gradient-to-b from-gray-800 to-gray-900 h-10 w-10 items-center justify-center rounded-xl shadow-lg ring-4 ring-white border border-gray-700/50 -mt-12 mb-4 mx-auto transition-transform hover:scale-105">
+             <LayoutGrid className="h-4 w-4 text-white" strokeWidth={2} />
           </div>
           <div className="h-px w-full bg-gray-100 mb-8" />
         </div>
@@ -60,6 +68,7 @@ export function FormCanvas({
                 isSelected={selectedFieldId === field.id}
                 onSelect={onSelect}
                 onRemove={onRemove}
+                onDuplicate={onDuplicate}
                 onUpdate={onUpdate}
               />
             ))}
@@ -67,20 +76,20 @@ export function FormCanvas({
 
           {fields.length === 0 && (
             <div className={cn(
-              "flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-[2.5rem] min-h-[400px] transition-all",
-              isOver && "border-gray-900/30 border-solid bg-gray-50/50"
+              "flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200/60 rounded-[2rem] min-h-[400px] transition-all duration-300",
+              isOver && "border-blue-300/50 bg-blue-50/30 scale-[1.01]"
             )}>
-              <div className="flex bg-white h-16 w-16 items-center justify-center rounded-2xl shadow-lg border border-gray-100 mb-6 group-hover:scale-110 transition-transform">
+              <div className="flex bg-gradient-to-tr from-gray-50 to-white h-16 w-16 items-center justify-center rounded-[1.25rem] shadow-sm border border-gray-100 mb-6 transition-transform group-hover:scale-110">
                 <Plus className="h-6 w-6 text-gray-400" strokeWidth={1.5} />
               </div>
               <p className="text-lg font-semibold text-gray-900 mb-2">
-                Empty Canvas
+                Your canvas is empty
               </p>
               <p className="text-gray-500 max-w-xs text-center text-sm leading-relaxed px-10">
-                Drag and drop fields from the left library to start building your form structure.
+                Drag building blocks from the left sidebar to start designing your form.
               </p>
               
-              <div className="mt-8 flex items-center gap-2 px-4 py-2 rounded-full bg-gray-900/5 text-gray-400 text-xs font-bold uppercase tracking-widest">
+              <div className="mt-8 flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 border border-gray-100 text-gray-400 text-xs font-bold uppercase tracking-widest shadow-sm">
                 <MousePointer2 className="h-3 w-3" />
                 Drop field here
               </div>

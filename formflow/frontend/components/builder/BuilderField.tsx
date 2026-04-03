@@ -6,6 +6,7 @@ import {
   GripVertical, 
   Trash2, 
   Settings2,
+  Copy,
   Lock,
   Type,
   AlignLeft,
@@ -27,6 +28,7 @@ interface BuilderFieldProps {
   isSelected?: boolean;
   onSelect?: (id: string) => void;
   onRemove?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
   onUpdate?: (id: string, updates: Partial<FormField>) => void;
 }
 
@@ -45,6 +47,7 @@ export function BuilderField({
   isSelected, 
   onSelect, 
   onRemove, 
+  onDuplicate,
   onUpdate 
 }: BuilderFieldProps) {
   const {
@@ -69,8 +72,8 @@ export function BuilderField({
       style={style}
       onClick={() => onSelect?.(field.id)}
       className={cn(
-        "group relative flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-gray-900/20",
-        isSelected && "ring-2 ring-gray-900 border-transparent shadow-md",
+        "group relative flex flex-col gap-3 rounded-[1.5rem] border border-gray-100 bg-white p-6 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-gray-200",
+        isSelected && "ring-2 ring-blue-600 border-transparent shadow-[0_8px_30px_rgb(0,0,0,0.08)] scale-[1.01] hover:border-transparent",
         isDragging && "opacity-50 grayscale scale-[0.98] z-0 shadow-none border-dashed"
       )}
     >
@@ -108,18 +111,22 @@ export function BuilderField({
             size="icon"
             onClick={(e) => {
               e.stopPropagation();
+              onDuplicate?.(field.id);
+            }}
+            className="h-8 w-8 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
               onRemove?.(field.id);
             }}
             className="h-8 w-8 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
           >
             <Trash2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg text-gray-400 hover:text-gray-900"
-          >
-            <Settings2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -127,7 +134,9 @@ export function BuilderField({
       {/* Field Preview Mockup */}
       <div className="mt-2 pl-12 pointer-events-none opacity-60">
         {field.type === "textarea" ? (
-          <div className="h-20 w-full rounded-xl border border-gray-100 bg-gray-50" />
+          <div className="h-20 w-full rounded-xl border border-gray-100 bg-gray-50 p-3">
+            {field.placeholder && <span className="text-sm text-gray-400">{field.placeholder}</span>}
+          </div>
         ) : ["select", "radio", "checkbox"].includes(field.type) ? (
           <div className="flex flex-col gap-2">
             {(field.options || ["Option 1", "Option 2"]).map((opt, i) => (
@@ -141,7 +150,9 @@ export function BuilderField({
             ))}
           </div>
         ) : (
-          <div className="h-10 w-full rounded-xl border border-gray-100 bg-gray-50" />
+          <div className="h-10 w-full rounded-xl border border-gray-100 bg-gray-50 flex items-center px-3">
+            {field.placeholder && <span className="text-sm text-gray-400">{field.placeholder}</span>}
+          </div>
         )}
       </div>
 

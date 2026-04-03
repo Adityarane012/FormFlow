@@ -15,11 +15,43 @@ export function useFormBuilder(initialSchema?: FormSchema) {
   );
 
   const addField = useCallback((type: FieldType, index?: number) => {
+    
+    let defaultLabel = "Question";
+    let defaultPlaceholder = "";
+
+    switch (type) {
+      case "text":
+        defaultLabel = "What is your name?";
+        defaultPlaceholder = "e.g. John Doe";
+        break;
+      case "email":
+        defaultLabel = "What is your email address?";
+        defaultPlaceholder = "e.g. hello@example.com";
+        break;
+      case "textarea":
+        defaultLabel = "Can you provide more details?";
+        defaultPlaceholder = "Type your detailed answer here...";
+        break;
+      case "select":
+        defaultLabel = "Please select an option from the list";
+        break;
+      case "radio":
+        defaultLabel = "Choose your preferred option";
+        break;
+      case "checkbox":
+        defaultLabel = "Select all that apply";
+        break;
+      case "file":
+        defaultLabel = "Please upload your relevant documents";
+        break;
+    }
+
     const newField: FormField = {
       id: generateFieldId(),
       type,
-      label: `Untitled ${type} question`,
+      label: defaultLabel,
       required: false,
+      placeholder: defaultPlaceholder,
       options: ["select", "radio", "checkbox"].includes(type) 
         ? ["Option 1", "Option 2"] 
         : undefined,
@@ -63,12 +95,31 @@ export function useFormBuilder(initialSchema?: FormSchema) {
     setSchema((prev) => ({ ...prev, title }));
   }, []);
 
+  const duplicateField = useCallback((id: string) => {
+    setSchema((prev) => {
+      const fieldIndex = prev.fields.findIndex(f => f.id === id);
+      if (fieldIndex === -1) return prev;
+      
+      const fieldToDuplicate = prev.fields[fieldIndex];
+      const newField = {
+        ...fieldToDuplicate,
+        id: generateFieldId(),
+      };
+      
+      const newFields = [...prev.fields];
+      newFields.splice(fieldIndex + 1, 0, newField);
+      
+      return { ...prev, fields: newFields };
+    });
+  }, []);
+
   return {
     schema,
     addField,
     moveField,
     removeField,
     updateField,
+    duplicateField,
     updateTitle,
     setSchema,
   };

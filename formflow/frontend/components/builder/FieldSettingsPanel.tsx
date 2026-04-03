@@ -13,19 +13,22 @@ import {
   ChevronDown,
   Radio as RadioIcon,
   CheckSquare,
-  Upload
+  Upload,
+  Plus,
+  X
 } from "lucide-react";
 import { FormField, FieldType } from "@shared/schemaTypes";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface FieldSettingsPanelProps {
   field?: FormField;
+  allFields?: FormField[];
   onUpdate?: (id: string, updates: Partial<FormField>) => void;
+  closePanel?: () => void;
 }
 
 const FIELD_ICONS: Record<FieldType, any> = {
@@ -40,7 +43,9 @@ const FIELD_ICONS: Record<FieldType, any> = {
 
 export function FieldSettingsPanel({ 
   field, 
-  onUpdate 
+  allFields = [],
+  onUpdate,
+  closePanel
 }: FieldSettingsPanelProps) {
   if (!field) {
     return (
@@ -67,24 +72,43 @@ export function FieldSettingsPanel({
   }
 
   const Icon = FIELD_ICONS[field.type] || Type;
+  const hasPlaceholder = ["text", "textarea", "email"].includes(field.type);
+  const hasOptions = ["select", "radio", "checkbox"].includes(field.type);
+
+  function handleOptionChange(index: number, val: string) {
+    const newOpts = [...(field?.options || [])];
+    newOpts[index] = val;
+    onUpdate?.(field!.id, { options: newOpts });
+  }
+
+  function addOption() {
+    const newOpts = [...(field?.options || []), `Option ${(field?.options?.length || 0) + 1}`];
+    onUpdate?.(field!.id, { options: newOpts });
+  }
+
+  function removeOption(index: number) {
+    const newOpts = [...(field?.options || [])];
+    newOpts.splice(index, 1);
+    onUpdate?.(field!.id, { options: newOpts });
+  }
 
   return (
-    <aside className="w-[320px] bg-white border-l border-gray-200 flex flex-col h-full shrink-0 shadow-lg">
-      <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-        <div className="flex items-center gap-2">
-           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-gray-100 shadow-sm text-gray-500">
-              <Icon className="h-3.5 w-3.5" />
+    <aside className="w-[320px] bg-white border-l border-gray-100 flex flex-col h-full shrink-0 shadow-[-4px_0_24px_rgb(0,0,0,0.02)] z-10">
+      <div className="p-4 border-b border-gray-100/80 flex items-center justify-between bg-gray-50/30">
+        <div className="flex items-center gap-3">
+           <div className="flex h-8 w-8 items-center justify-center rounded-[0.6rem] bg-blue-50 border border-blue-100/50 shadow-[0_2px_8px_rgb(59,130,246,0.15)] text-blue-600">
+              <Icon className="h-4 w-4" />
            </div>
            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">Edit Field</p>
-              <h2 className="text-xs font-semibold text-gray-900 leading-none capitalize">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.15em] leading-none mb-1">Edit Field</p>
+              <h2 className="text-xs font-bold text-gray-900 leading-none capitalize">
                 {field.type}
               </h2>
            </div>
         </div>
-        <div className="flex items-center gap-1">
-           <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live</span>
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-50 border border-green-100/50">
+           <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+           <span className="text-[9px] font-bold text-green-700 uppercase tracking-widest leading-none">Live</span>
         </div>
       </div>
 
@@ -92,25 +116,38 @@ export function FieldSettingsPanel({
         <div className="p-6 space-y-8 pb-20">
           {/* General Section */}
           <div className="space-y-4">
-            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] flex items-center gap-2">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
               General
               <div className="h-px flex-1 bg-gray-100" />
             </h3>
             
             <div className="space-y-2">
-              <Label htmlFor="field-label" className="text-xs font-medium text-gray-600">Label</Label>
+              <Label htmlFor="field-label" className="text-xs font-semibold text-gray-700">Label</Label>
               <Input 
                 id="field-label"
                 value={field.label}
                 onChange={(e) => onUpdate?.(field.id, { label: e.target.value })}
-                className="h-10 rounded-xl border-gray-200 focus:ring-gray-900 transition-all font-medium text-sm"
+                className="h-10 rounded-xl border-gray-200 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-all font-medium text-sm"
               />
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            {hasPlaceholder && (
+              <div className="space-y-2 pt-1">
+                <Label htmlFor="field-placeholder" className="text-xs font-semibold text-gray-700">Placeholder text</Label>
+                <Input 
+                  id="field-placeholder"
+                  value={field.placeholder || ""}
+                  onChange={(e) => onUpdate?.(field.id, { placeholder: e.target.value })}
+                  className="h-10 rounded-xl border-gray-200 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-all font-medium text-sm placeholder:text-gray-300"
+                  placeholder="e.g. Enter your answer"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-4">
               <div className="space-y-0.5">
-                <Label htmlFor="required-toggle" className="text-xs font-medium text-gray-900">Required</Label>
-                <p className="text-[11px] text-gray-400">Must be filled before submit</p>
+                <Label htmlFor="required-toggle" className="text-xs font-semibold text-gray-900">Required</Label>
+                <p className="text-[11px] text-gray-400 font-medium">Must be filled before submit</p>
               </div>
               <Switch 
                 id="required-toggle"
@@ -120,35 +157,101 @@ export function FieldSettingsPanel({
             </div>
           </div>
 
-          {/* Logic & Advanced (Mockup) */}
-          <div className="space-y-4 pt-4">
-            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em] flex items-center gap-2">
-              Advanced logic
+          {/* Options Section */}
+          {hasOptions && (
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                Options
+                <div className="h-px flex-1 bg-gray-100" />
+              </h3>
+
+              <div className="space-y-2.5 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
+                {(field.options || []).map((opt, i) => (
+                  <div key={i} className="flex items-center gap-2 group relative">
+                    <Input 
+                      value={opt} 
+                      onChange={(e) => handleOptionChange(i, e.target.value)} 
+                      className="h-9 rounded-[0.6rem] border-gray-200 focus:ring-blue-500 focus:border-blue-500 text-sm font-medium shadow-sm bg-white pr-9"
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => removeOption(i)} 
+                      className="absolute right-1 top-0.5 h-8 w-8 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-600 hover:bg-red-50 transition-all rounded-md"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addOption} 
+                  className="w-full h-9 mt-1 text-xs font-semibold gap-2 rounded-[0.6rem] border-dashed border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-all shadow-sm"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Option
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Logic & Advanced */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+              Conditional Visibility
               <div className="h-px flex-1 bg-gray-100" />
             </h3>
             
-            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-gray-600">Conditional visibility</p>
-                <ChevronRight className="h-3 w-3 text-gray-400" />
+            <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-3">
+              <p className="text-xs font-semibold text-gray-700">Show this question if:</p>
+              
+              <div className="space-y-2">
+                <select 
+                  className="w-full h-9 rounded-xl border-gray-200 text-xs font-medium focus:ring-blue-500 focus:border-blue-500"
+                  value={field.showIf?.field || ""}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (!val) {
+                       onUpdate?.(field.id, { showIf: undefined });
+                    } else {
+                       onUpdate?.(field.id, { showIf: { field: val, equals: field.showIf?.equals || "" } });
+                    }
+                  }}
+                >
+                  <option value="">Always show (No logic)</option>
+                  {allFields?.filter(f => f.id !== field.id).map(f => (
+                    <option key={f.id} value={f.id}>{f.label || f.type}</option>
+                  ))}
+                </select>
+
+                {field.showIf?.field && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <select className="flex-1 h-9 rounded-xl border-gray-200 text-xs font-medium focus:ring-blue-500 focus:border-blue-500" disabled>
+                        <option>equals</option>
+                      </select>
+                    </div>
+                    <Input 
+                      placeholder="Value"
+                      value={field.showIf?.equals || ""}
+                      onChange={e => {
+                         onUpdate?.(field.id, { showIf: { field: field.showIf!.field, equals: e.target.value } });
+                      }}
+                      className="h-9 rounded-xl text-xs bg-white"
+                    />
+                  </>
+                )}
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
-                Show this question only if user selects "Yes" in a previous field.
-              </p>
             </div>
           </div>
         </div>
       </ScrollArea>
       
-      <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-        <Button variant="ghost" className="w-full h-10 rounded-xl text-xs font-semibold text-gray-500 hover:text-red-600 hover:bg-red-50 gap-2 border border-transparent hover:border-red-100 transition-all">
-          Discard changes
+      <div className="p-4 border-t border-gray-100 bg-white">
+        <Button onClick={closePanel} variant="ghost" className="w-full h-11 rounded-xl text-xs font-bold text-gray-700 hover:text-white hover:bg-gray-900 shadow-sm border border-gray-200 transition-all group overflow-hidden relative">
+          <span className="relative z-10">Done Editing</span>
         </Button>
       </div>
     </aside>
   );
 }
-
-// Add Switch component since it might not be in components/ui
-// If it is, this will be redundant but safe if imported correctly.
-// (In a real scenario I'd check or install it).

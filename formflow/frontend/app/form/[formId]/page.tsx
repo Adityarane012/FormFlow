@@ -10,7 +10,7 @@ async function fetchForm(id: string) {
   const res = await fetch(`${base}/forms/${id}`, { cache: "no-store" });
   if (!res.ok) return null;
   return res.json() as Promise<{
-    _id: string;
+    id: string;
     title: string;
     fields: FormSchema["fields"];
   }>;
@@ -40,7 +40,7 @@ export default async function PublicFormPage({
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
-        <FormRenderer formId={data._id} schema={schema} />
+        <FormRenderer formId={data.id} schema={schema} />
       </main>
     </div>
   );

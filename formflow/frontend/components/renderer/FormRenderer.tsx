@@ -78,33 +78,38 @@ export function FormRenderer({ formId, schema }: FormRendererProps) {
 
   if (done) {
     return (
-      <div className="mx-auto max-w-xl rounded-2xl border border-gray-200 bg-white px-8 py-14 text-center shadow-sm">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-          <CheckCircle2 className="h-8 w-8" />
+      <div className="relative mx-auto max-w-xl rounded-[2rem] border border-gray-200/60 bg-white/90 px-8 py-14 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
+        <div className="absolute -inset-[1px] rounded-[2rem] bg-gradient-to-b from-gray-100 to-white -z-10 blur-[2px]" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-b from-green-400 to-green-500 text-white shadow-lg ring-4 ring-green-50">
+          <CheckCircle2 className="h-8 w-8" strokeWidth={2.5} />
         </div>
-        <h2 className="mt-6 text-2xl font-semibold text-gray-900">
+        <h2 className="mt-8 text-2xl font-bold tracking-tight text-gray-900">
           Response recorded
         </h2>
-        <p className="mt-2 text-gray-500">
-          Thanks for filling out {schema.title || "this form"}.
+        <p className="mt-2 text-gray-500 font-medium">
+          Thanks for filling out <span className="text-gray-900 font-semibold">{schema.title || "this form"}</span>.
         </p>
       </div>
     );
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="mx-auto max-w-xl space-y-8 rounded-2xl border border-gray-200 bg-white px-8 py-10 shadow-sm"
-    >
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
-          {schema.title || "Form"}
-        </h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Please answer the questions below. Asterisk (*) indicates required.
-        </p>
-      </div>
+    <div className="relative mx-auto max-w-xl">
+      <div className="absolute -inset-1 rounded-[2.5rem] bg-gradient-to-b from-gray-200/50 to-transparent -z-10 blur-xl opacity-50" />
+      <form
+        onSubmit={onSubmit}
+        className="space-y-10 rounded-[2rem] border border-gray-100 bg-white px-8 py-12 shadow-[0_20px_40px_rgb(0,0,0,0.04)] sm:px-12 object-cover relative overflow-hidden"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+        
+        <div className="pb-4 border-b border-gray-100">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 leading-tight">
+            {schema.title || "Untitled Form"}
+          </h1>
+          <p className="mt-3 text-sm font-medium text-gray-500">
+            Please fill out the details below. Required fields are marked with an asterisk (*).
+          </p>
+        </div>
 
       <div className="space-y-8">
         {visibleFields.map((field) => (
@@ -138,6 +143,7 @@ export function FormRenderer({ formId, schema }: FormRendererProps) {
           "Submit"
         )}
       </Button>
-    </form>
+      </form>
+    </div>
   );
 }

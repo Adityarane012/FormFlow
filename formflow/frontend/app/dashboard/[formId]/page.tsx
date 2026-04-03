@@ -8,7 +8,7 @@ async function fetchForm(id: string) {
   const res = await fetch(`${base}/forms/${id}`, { cache: "no-store" });
   if (!res.ok) return null;
   return res.json() as Promise<{
-    _id: string;
+    id: string;
     title: string;
     fields: FormSchema["fields"];
   }>;
@@ -46,7 +46,7 @@ export default async function DashboardPage({
 
   return (
     <DashboardClient
-      formId={form._id}
+      formId={form.id}
       schema={schema}
       initialResponses={responses.map((r) => ({
         id: r.id,

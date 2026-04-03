@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { 
   ChevronLeft, 
   Play, 
@@ -36,6 +37,7 @@ import { FieldSettingsPanel } from "@/components/builder/FieldSettingsPanel";
 import { useFormBuilder } from "@/hooks/useFormBuilder";
 import { FormField, FieldType } from "@shared/schemaTypes";
 import { cn } from "@/lib/utils";
+import { apiPost } from "@/lib/api";
 
 const FIELD_ICONS: Record<FieldType, any> = {
   text: Type,
@@ -53,6 +55,7 @@ export default function BuilderPage() {
     addField, 
     moveField, 
     removeField, 
+    duplicateField,
     updateField, 
     updateTitle 
   } = useFormBuilder();
@@ -60,6 +63,25 @@ export default function BuilderPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<FieldType | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  
+  const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    try {
+      setIsSaving(true);
+      const data = await apiPost<{ id: string }>("/forms", {
+        title: schema.title,
+        fields: schema.fields,
+      });
+      router.push(`/form/${data.id}`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save the form.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -90,7 +112,7 @@ export default function BuilderPage() {
     // 1. Dropping Sidebar Item onto Canvas or into the sortable list
     if (isActiveSidebar) {
       if (over.id === "canvas" || schema.fields.find(f => f.id === over.id)) {
-        const type = active.data.current.fieldType as FieldType;
+        const type = active.data.current?.fieldType as FieldType;
         let index = schema.fields.length;
         
         if (over.id !== "canvas") {
@@ -145,24 +167,41 @@ export default function BuilderPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-9 gap-2 rounded-xl text-gray-500 hover:text-gray-900 transition-all font-medium">
+            <Button onClick={() => {
+              localStorage.setItem("formflow_preview_schema", JSON.stringify(schema));
+              router.push("/preview");
+            }} variant="ghost" size="sm" className="h-9 gap-2 rounded-xl text-gray-500 hover:text-gray-900 transition-all font-medium">
               <Play className="h-3.5 w-3.5" />
               Preview
             </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm font-medium">
+            <Button 
+              onClick={handleSave} 
+              disabled={isSaving} 
+              variant="outline" 
+              size="sm" 
+              className="h-9 gap-2 rounded-xl border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm font-medium"
+            >
               <Save className="h-3.5 w-3.5" />
-              Save draft
+              {isSaving ? "Saving..." : "Save draft"}
             </Button>
             <div className="mx-1 h-4 w-px bg-gray-200" />
-            <Button size="sm" className="h-9 gap-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-all shadow-md px-5 font-semibold">
+            <Button 
+              onClick={handleSave} 
+              disabled={isSaving} 
+              size="sm" 
+              className="h-9 gap-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-all shadow-md px-5 font-semibold"
+            >
               <Rocket className="h-3.5 w-3.5" />
-              Publish
+              {isSaving ? "Submitting..." : "Publish"}
             </Button>
           </div>
         </header>
 
         {/* ── Builder Workspace ── */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className={cn(
+          "grid flex-1 overflow-hidden transition-all duration-300 ease-in-out",
+          selectedFieldId ? "grid-cols-[280px_1fr_320px]" : "grid-cols-[280px_1fr]"
+        )}>
           <FieldSidebar />
           
           <FormCanvas 
@@ -170,13 +209,25 @@ export default function BuilderPage() {
             selectedFieldId={selectedFieldId}
             onSelect={setSelectedFieldId}
             onRemove={removeField}
+            onDuplicate={duplicateField}
             onUpdate={updateField}
           />
           
-          <FieldSettingsPanel 
-             field={schema.fields.find(f => f.id === selectedFieldId)}
-             onUpdate={updateField}
-          />
+          <div
+            className={cn(
+              "transition-all duration-300 ease-in-out h-full overflow-hidden border-l border-gray-100 bg-white",
+              selectedFieldId ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 hidden"
+            )}
+          >
+            {selectedFieldId && (
+              <FieldSettingsPanel 
+                 field={schema.fields.find(f => f.id === selectedFieldId)}
+                 allFields={schema.fields}
+                 onUpdate={updateField}
+                 closePanel={() => setSelectedFieldId(null)}
+              />
+            )}
+          </div>
         </div>
 
         <DragOverlay>
