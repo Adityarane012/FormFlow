@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FORM_TEMPLATES } from "@/lib/formTemplates";
 import { 
   ChevronLeft, 
   Play, 
@@ -15,7 +16,10 @@ import {
   ChevronDown,
   Radio as RadioIcon,
   CheckSquare,
-  Upload
+  Upload,
+  Copy,
+  ExternalLink,
+  X
 } from "lucide-react";
 import { 
   DndContext, 
@@ -25,9 +29,10 @@ import {
   useSensors, 
   DragEndEvent, 
   DragStartEvent,
-  closestCorners
+  closestCorners,
+  KeyboardSensor
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -37,7 +42,7 @@ import { FieldSettingsPanel } from "@/components/builder/FieldSettingsPanel";
 import { useFormBuilder } from "@/hooks/useFormBuilder";
 import { FormField, FieldType } from "@shared/schemaTypes";
 import { cn } from "@/lib/utils";
-import { apiPost } from "@/lib/api";
+import { createForm, updateForm } from "@/lib/forms";
 
 const FIELD_ICONS: Record<FieldType, any> = {
   text: Type,
@@ -57,29 +62,52 @@ export default function BuilderPage() {
     removeField, 
     duplicateField,
     updateField, 
-    updateTitle 
+    updateTitle,
+    setSchema
   } = useFormBuilder();
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const templateId = searchParams.get("template");
+    if (templateId && FORM_TEMPLATES[templateId]) {
+      setSchema(FORM_TEMPLATES[templateId]);
+    }
+  }, [searchParams, setSchema]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<FieldType | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   
   const router = useRouter();
+  const [formId, setFormId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   async function handleSave() {
     try {
       setIsSaving(true);
-      const data = await apiPost<{ id: string }>("/forms", {
-        title: schema.title,
-        fields: schema.fields,
-      });
-      router.push(`/form/${data.id}`);
+      let currentId = formId;
+      if (currentId) {
+        await updateForm(currentId, schema);
+      } else {
+        currentId = await createForm(schema);
+        setFormId(currentId);
+      }
+      return currentId;
     } catch (err) {
       console.error(err);
       alert("Failed to save the form.");
+      return null;
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handlePublish() {
+    const id = await handleSave();
+    if (id) {
+      setShowPublishModal(true);
     }
   }
 
@@ -88,6 +116,9 @@ export default function BuilderPage() {
       activationConstraint: {
         distance: 8,
       },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
@@ -186,7 +217,7 @@ export default function BuilderPage() {
             </Button>
             <div className="mx-1 h-4 w-px bg-gray-200" />
             <Button 
-              onClick={handleSave} 
+              onClick={handlePublish} 
               disabled={isSaving} 
               size="sm" 
               className="h-9 gap-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-all shadow-md px-5 font-semibold"
@@ -237,12 +268,62 @@ export default function BuilderPage() {
                 <ActiveIcon className="h-4 w-4" />
               </div>
               <span className="flex-1 opacity-90">
-                {activeType ? `Add ${activeType}...` : `Moving Question...`}
+                {activeType ? `Add ${activeType}...` : (schema.fields.find(f => f.id === activeId)?.label || `Moving Question...`)}
               </span>
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Publish Modal */}
+      {showPublishModal && formId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Form Published</h3>
+            <p className="text-sm text-gray-500 mb-6">Your form is now live and ready to be shared with the world.</p>
+            
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 p-2 rounded-xl mb-6">
+              <Input 
+                readOnly 
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/form/${formId}`}
+                className="border-none bg-transparent shadow-none focus-visible:ring-0 text-gray-600 font-medium h-8"
+              />
+            </div>
+            
+            <div className="flex items-center gap-3 w-full">
+              <Button 
+                variant="outline" 
+                className="flex-1 gap-2 rounded-xl h-11 border-gray-200 text-gray-700 hover:bg-gray-50 font-medium shadow-sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/form/${formId}`);
+                  alert("Link copied!");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+                Copy Link
+              </Button>
+              <Button 
+                 className="flex-1 gap-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white shadow-sm h-11 font-medium"
+                 asChild
+              >
+                <a href={`/form/${formId}`} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                  Open Form
+                </a>
+              </Button>
+            </div>
+
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 h-8 w-8 rounded-full hover:bg-gray-100"
+              onClick={() => setShowPublishModal(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

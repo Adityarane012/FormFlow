@@ -5,8 +5,8 @@ import type { FormField, FormSchema } from "@shared/schemaTypes";
 import { isFieldVisible } from "@/lib/conditional";
 import { FieldRenderer } from "@/components/renderer/FieldRenderer";
 import { Button } from "@/components/ui/button";
-import { apiPost } from "@/lib/api";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 
 type FormRendererProps = {
   formId: string;
@@ -66,10 +66,11 @@ export function FormRenderer({ formId, schema, previewMode }: FormRendererProps)
     }
     setSubmitting(true);
     try {
-      await apiPost("/responses", {
-        formId,
+      const { error: insertError } = await supabase.from("responses").insert({
+        form_id: formId,
         answers: payload,
       });
+      if (insertError) throw insertError;
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -78,19 +79,34 @@ export function FormRenderer({ formId, schema, previewMode }: FormRendererProps)
     }
   }
 
+  function handleReset() {
+    setAnswers({});
+    setDone(false);
+    setError(null);
+  }
+
   if (done) {
     return (
-      <div className="relative mx-auto max-w-xl rounded-[2rem] border border-gray-200/60 bg-white/90 px-8 py-14 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
-        <div className="absolute -inset-[1px] rounded-[2rem] bg-gradient-to-b from-gray-100 to-white -z-10 blur-[2px]" />
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-b from-green-400 to-green-500 text-white shadow-lg ring-4 ring-green-50">
-          <CheckCircle2 className="h-8 w-8" strokeWidth={2.5} />
+      <div className="flex min-h-[60vh] items-center justify-center px-6">
+        <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <h2 className="mt-4 text-xl font-semibold text-gray-900">
+            Thank you for submitting the form.
+          </h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Your response has been recorded successfully.
+          </p>
+          <Button
+            variant="outline"
+            className="mt-6 h-10 rounded-lg border-gray-200 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+            onClick={handleReset}
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Submit another response
+          </Button>
         </div>
-        <h2 className="mt-8 text-2xl font-bold tracking-tight text-gray-900">
-          Response recorded
-        </h2>
-        <p className="mt-2 text-gray-500 font-medium">
-          Thanks for filling out <span className="text-gray-900 font-semibold">{schema.title || "this form"}</span>.
-        </p>
       </div>
     );
   }

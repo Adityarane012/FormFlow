@@ -60,7 +60,7 @@ export function BuilderField({
   } = useSortable({ id: field.id });
 
   const style = {
-    transform: CSS.Translate.toString(transform),
+    transform: CSS.Transform.toString(transform),
     transition,
   };
 
@@ -74,16 +74,16 @@ export function BuilderField({
       className={cn(
         "group relative flex flex-col gap-3 rounded-[1.5rem] border border-gray-100 bg-white p-6 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-gray-200",
         isSelected && "ring-2 ring-blue-600 border-transparent shadow-[0_8px_30px_rgb(0,0,0,0.08)] scale-[1.01] hover:border-transparent",
-        isDragging && "opacity-50 grayscale scale-[0.98] z-0 shadow-none border-dashed"
+        isDragging && "opacity-0 z-0 h-0 p-0 overflow-hidden"
       )}
     >
       {/* Reorder Handle */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-1.5 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity p-2 text-gray-400 hover:text-gray-900"
+        className="absolute left-3 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-all p-2 text-gray-300 hover:text-gray-900 border border-transparent hover:border-gray-100 hover:bg-gray-50 rounded-lg"
       >
-        <GripVertical className="h-5 w-5" />
+        <GripVertical className="h-5 w-5" strokeWidth={1} />
       </div>
 
       <div className="flex items-start justify-between">

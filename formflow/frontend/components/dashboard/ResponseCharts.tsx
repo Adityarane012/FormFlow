@@ -21,8 +21,9 @@ type ResponseChartsProps = {
 function countForField(
   field: FormField,
   rows: ResponseRow[]
-): { name: string; count: number }[] {
+): { name: string; count: number; percentage: number }[] {
   const counts = new Map<string, number>();
+  let total = 0;
   for (const r of rows) {
     const raw = r.answers[field.id];
     if (raw === undefined || raw === null) continue;
@@ -30,14 +31,21 @@ function countForField(
       for (const x of raw) {
         const k = String(x);
         counts.set(k, (counts.get(k) ?? 0) + 1);
+        total += 1;
       }
     } else {
+      if (String(raw).trim() === "") continue;
       const k = String(raw);
       counts.set(k, (counts.get(k) ?? 0) + 1);
+      total += 1;
     }
   }
   return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
+    .map(([name, count]) => ({ 
+      name, 
+      count, 
+      percentage: total > 0 ? (count / total) * 100 : 0 
+    }))
     .sort((a, b) => b.count - a.count);
 }
 
@@ -81,26 +89,50 @@ export function ResponseCharts({ fields, rows }: ResponseChartsProps) {
             <p className="mt-1 text-xs text-gray-500 capitalize">{field.type}</p>
             <div className="mt-6 h-[260px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: "#6b7280", fontSize: 11 }}
-                    interval={0}
-                    angle={-18}
-                    textAnchor="end"
-                    height={70}
+                <BarChart layout="vertical" data={data} margin={{ top: 8, right: 50, left: 0, bottom: 8 }}>
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: "#374151", fontSize: 13, fontWeight: 500 }} 
+                    width={140} 
                   />
-                  <YAxis allowDecimals={false} tick={{ fill: "#6b7280", fontSize: 11 }} />
                   <Tooltip
-                    cursor={{ fill: "rgba(0,0,0,0.03)" }}
+                    cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                    formatter={(value: any, name: any, props: any) => [`${value} response(s)`, "Count"]}
+                     labelFormatter={(label: any, props: any) => {
+                      if (props && props[0]) {
+                         return `${label} - ${props[0].payload.percentage.toFixed(1)}%`;
+                      }
+                      return label;
+                    }}
                     contentStyle={{
                       borderRadius: "12px",
-                      border: "1px solid #e5e7eb",
-                      fontSize: "12px",
+                      border: "0",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+                      fontSize: "13px",
+                      fontWeight: 500
                     }}
                   />
-                  <Bar dataKey="count" fill="#111827" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                  <Bar 
+                    dataKey="count" 
+                    fill="#3b82f6" 
+                    radius={[0, 6, 6, 0]} 
+                    barSize={32}
+                    label={({ x, y, width, height, value, index }) => (
+                      <text 
+                        x={x + width + 10} 
+                        y={y + height / 2 + 4} 
+                        fill="#6b7280" 
+                        fontSize="12" 
+                        fontWeight="600"
+                      >
+                        {`${value} (${data[index].percentage.toFixed(0)}%)`}
+                      </text>
+                    )}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>

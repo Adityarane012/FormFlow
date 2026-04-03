@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LayoutGrid, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FORM_TEMPLATES } from "@/lib/formTemplates";
 
 export default function HomePage() {
   const router = useRouter();
@@ -54,6 +55,25 @@ export default function HomePage() {
           >
             Create a blank form
           </Button>
+        </div>
+
+        <div className="mt-16 text-left">
+          <h2 className="mb-6 text-xl font-semibold text-gray-900">Start with a template</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(FORM_TEMPLATES).map(([id, template]) => (
+              <button
+                key={id}
+                onClick={() => router.push(`/builder?template=${id}`)}
+                className="group flex flex-col items-start rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-gray-300 hover:shadow-md"
+              >
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-400 group-hover:bg-gray-900 group-hover:text-white transition-colors">
+                  <LayoutGrid className="h-5 w-5" strokeWidth={1.5} />
+                </div>
+                <h3 className="text-sm font-semibold text-gray-900">{template.title}</h3>
+                <p className="mt-1 text-xs text-gray-500">{template.fields.length} fields</p>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mx-auto mt-20 grid max-w-4xl gap-4 text-left sm:grid-cols-3">
