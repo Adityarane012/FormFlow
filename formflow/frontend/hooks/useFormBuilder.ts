@@ -5,6 +5,7 @@ import {
   FormField, 
   FormSchema, 
   FieldType, 
+  FormTheme, 
   generateFieldId 
 } from "@shared/schemaTypes";
 import { arrayMove } from "@dnd-kit/sortable";
@@ -13,6 +14,18 @@ export function useFormBuilder(initialSchema?: FormSchema) {
   const [schema, setSchema] = useState<FormSchema>(
     initialSchema || { title: "Untitled form", fields: [] }
   );
+
+  const updateTheme = useCallback((theme: Partial<FormTheme>) => {
+    setSchema((prev) => ({
+      ...prev,
+      theme: {
+        primaryColor: prev.theme?.primaryColor || "#4f46e5",
+        font: prev.theme?.font || "Inter",
+        ...prev.theme,
+        ...theme,
+      },
+    }));
+  }, []);
 
   const addField = useCallback((type: FieldType, index?: number) => {
     
@@ -121,6 +134,7 @@ export function useFormBuilder(initialSchema?: FormSchema) {
     updateField,
     duplicateField,
     updateTitle,
+    updateTheme,
     setSchema,
   };
 }

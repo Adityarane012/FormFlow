@@ -14,6 +14,11 @@ interface OneQuestionModeProps {
   submitting: boolean;
   error: string | null;
   title: string;
+  theme: {
+    primaryColor: string;
+    font: string;
+    logoUrl?: string;
+  };
 }
 
 export function OneQuestionMode({ 
@@ -23,7 +28,8 @@ export function OneQuestionMode({
   onSubmit, 
   submitting, 
   error,
-  title
+  title,
+  theme
 }: OneQuestionModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentField = fields[currentIndex];
@@ -55,7 +61,10 @@ export function OneQuestionMode({
   if (!currentField) return null;
 
   return (
-    <div className="relative mx-auto max-w-2xl px-6 min-h-[500px] flex flex-col justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div 
+      className="relative mx-auto max-w-2xl px-6 min-h-[500px] flex flex-col justify-center animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans"
+      style={{ fontFamily: theme.font }}
+    >
       <div className="mb-12">
         <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -65,10 +74,10 @@ export function OneQuestionMode({
                 {progress}% Complete
             </span>
         </div>
-        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden dark:bg-muted/30">
+        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden dark:bg-muted/30 font-sans">
           <div 
-            className="h-full bg-gray-900 transition-all duration-500 ease-out dark:bg-foreground" 
-            style={{ width: `${progress}%` }} 
+            className="h-full transition-all duration-500 ease-out" 
+            style={{ width: `${progress}%`, backgroundColor: theme.primaryColor }} 
           />
         </div>
       </div>
@@ -80,6 +89,7 @@ export function OneQuestionMode({
                 value={answers[currentField.id]}
                 onChange={setAnswer}
                 disabled={submitting}
+                primaryColor={theme.primaryColor}
             />
         </div>
 
@@ -104,18 +114,20 @@ export function OneQuestionMode({
           
           {!isLast ? (
              <Button
-                className="h-12 px-8 rounded-2xl bg-gray-900 text-white hover:bg-gray-800 shadow-sm font-bold gap-2 flex-1 sm:flex-none"
+                className="h-12 px-8 rounded-2xl text-white shadow-sm font-bold gap-2 flex-1 sm:flex-none"
                 onClick={handleNext}
                 disabled={submitting}
+                style={{ backgroundColor: theme.primaryColor, color: '#fff' }}
              >
                 Next
                 <ChevronRight className="h-4 w-4" />
              </Button>
           ) : (
             <Button
-              className="h-12 px-10 rounded-2xl bg-gray-900 text-white hover:bg-gray-800 shadow-xl font-bold gap-2 flex-1 sm:flex-none"
+              className="h-12 px-10 rounded-2xl text-white shadow-xl font-bold gap-2 flex-1 sm:flex-none"
               onClick={onSubmit}
               disabled={submitting}
+              style={{ backgroundColor: theme.primaryColor, color: '#fff' }}
             >
               {submitting ? (
                 <>
@@ -133,10 +145,14 @@ export function OneQuestionMode({
         </div>
       </div>
       
-      <div className="mt-20 flex items-center gap-4 border-t border-border/50 pt-8 opacity-40">
-         <div className="h-6 w-6 rounded-lg bg-gray-900 text-[10px] font-bold text-white flex items-center justify-center dark:bg-foreground dark:text-background">
-            F
-         </div>
+      <div className="mt-20 flex items-center gap-4 border-t border-border/50 pt-8 opacity-40 font-sans">
+         {theme.logoUrl ? (
+           <img src={theme.logoUrl} alt="Logo" className="h-6 w-auto object-contain grayscale opacity-60" onError={(e) => (e.currentTarget.style.display = 'none')} />
+         ) : (
+           <div className="h-6 w-6 rounded-lg bg-gray-900 text-[10px] font-bold text-white flex items-center justify-center dark:bg-foreground dark:text-background">
+             F
+           </div>
+         )}
          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             {title} · Immersive Mode
          </span>

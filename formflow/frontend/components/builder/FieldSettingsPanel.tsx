@@ -15,9 +15,12 @@ import {
   CheckSquare,
   Upload,
   Plus,
-  X
+  X,
+  Palette,
+  Type as FontIcon,
+  Image as ImageIcon
 } from "lucide-react";
-import { FormField, FieldType } from "@shared/schemaTypes";
+import { FormField, FieldType, FormTheme } from "@shared/schemaTypes";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -27,7 +30,9 @@ import { Button } from "@/components/ui/button";
 interface FieldSettingsPanelProps {
   field?: FormField;
   allFields?: FormField[];
+  theme?: FormTheme;
   onUpdate?: (id: string, updates: Partial<FormField>) => void;
+  onUpdateTheme?: (theme: Partial<FormTheme>) => void;
   closePanel?: () => void;
 }
 
@@ -41,31 +46,133 @@ const FIELD_ICONS: Record<FieldType, any> = {
   file: Upload,
 };
 
+const FONTS = ["Inter", "Geist", "Roboto", "Lexend", "Outfit", "Space Grotesk"];
+
 export function FieldSettingsPanel({ 
   field, 
   allFields = [],
+  theme,
   onUpdate,
+  onUpdateTheme,
   closePanel
 }: FieldSettingsPanelProps) {
+  // If no field is selected, show Form Appearance (Branding)
   if (!field) {
     return (
-      <aside className="w-[320px] bg-white border-l border-gray-200 flex flex-col h-full shrink-0">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-2">
-            <Settings2 className="h-3 w-3" />
-            Field Settings
-          </h2>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50/10">
-          <div className="h-16 w-16 flex items-center justify-center rounded-3xl bg-white shadow-sm border border-gray-100 mb-6 transition-all group-hover:scale-105">
-            <SlidersHorizontal className="h-6 w-6 text-gray-300" />
+      <aside className="w-[320px] bg-white border-l border-gray-100 flex flex-col h-full shrink-0 shadow-[-4px_0_24px_rgb(0,0,0,0.02)] z-10 transition-all duration-300">
+        <div className="p-4 border-b border-gray-100/80 flex items-center justify-between bg-gray-50/30">
+          <div className="flex items-center gap-3">
+             <div className="flex h-8 w-8 items-center justify-center rounded-[0.6rem] bg-indigo-50 border border-indigo-100/50 shadow-[0_2px_8px_rgb(79,70,229,0.15)] text-indigo-600">
+                <Palette className="h-4 w-4" />
+             </div>
+             <div>
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.15em] leading-none mb-1">Branding</p>
+                <h2 className="text-xs font-bold text-gray-900 leading-none">
+                  Form Appearance
+                </h2>
+             </div>
           </div>
-          <p className="text-sm font-semibold text-gray-900">
-            No field selected
-          </p>
-          <p className="text-xs text-gray-400 mt-2 max-w-[180px] leading-relaxed">
-            Select any field on the canvas to edit its properties, validation, and logic.
-          </p>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-6 space-y-8">
+            {/* Colors Section */}
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                Brand Colors
+                <div className="h-px flex-1 bg-gray-100" />
+              </h3>
+              
+              <div className="space-y-3">
+                <Label className="text-xs font-semibold text-gray-700">Primary Color</Label>
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="h-10 w-10 rounded-xl shadow-sm border border-gray-200 shrink-0 overflow-hidden relative"
+                    style={{ backgroundColor: theme?.primaryColor || "#4f46e5" }}
+                  >
+                    <input 
+                      type="color" 
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full scale-150"
+                      value={theme?.primaryColor || "#4f46e5"}
+                      onChange={(e) => onUpdateTheme?.({ primaryColor: e.target.value })}
+                    />
+                  </div>
+                  <Input 
+                    value={theme?.primaryColor || "#4f46e5"}
+                    onChange={(e) => onUpdateTheme?.({ primaryColor: e.target.value })}
+                    className="h-10 rounded-xl border-gray-200 font-mono text-xs"
+                    placeholder="#000000"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Typography Section */}
+            <div className="space-y-4 pt-2">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                Typography
+                <div className="h-px flex-1 bg-gray-100" />
+              </h3>
+              
+              <div className="space-y-3">
+                <Label className="text-xs font-semibold text-gray-700">Font Family</Label>
+                <div className="relative">
+                  <FontIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <select 
+                    className="w-full h-10 pl-10 pr-4 rounded-xl border-gray-200 text-sm font-medium focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    value={theme?.font || "Inter"}
+                    onChange={(e) => onUpdateTheme?.({ font: e.target.value })}
+                  >
+                    {FONTS.map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Logo Section */}
+            <div className="space-y-4 pt-2">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                Logos & Icons
+                <div className="h-px flex-1 bg-gray-100" />
+              </h3>
+              
+              <div className="space-y-3">
+                <Label className="text-xs font-semibold text-gray-700">Logo Image URL</Label>
+                <div className="relative">
+                  <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input 
+                    value={theme?.logoUrl || ""}
+                    onChange={(e) => onUpdateTheme?.({ logoUrl: e.target.value })}
+                    className="h-10 pl-10 rounded-xl border-gray-200 text-sm font-medium"
+                    placeholder="https://example.com/logo.png"
+                  />
+                </div>
+                {theme?.logoUrl && (
+                  <div className="p-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                    <img src={theme.logoUrl} alt="Logo Preview" className="max-h-12 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100/50 space-y-2">
+               <div className="flex items-center gap-2 text-indigo-700">
+                  <Info className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Note</span>
+               </div>
+               <p className="text-[11px] text-indigo-600/80 leading-relaxed font-medium">
+                 These branding settings will be applied to the public form and the share page.
+               </p>
+            </div>
+          </div>
+        </ScrollArea>
+        
+        <div className="p-4 border-t border-gray-100 bg-white">
+          <Button onClick={closePanel} variant="ghost" className="w-full h-11 rounded-xl text-xs font-bold text-gray-700 hover:text-white hover:bg-indigo-600 shadow-sm border border-gray-200 transition-all hover:border-indigo-600">
+            Apply Styling
+          </Button>
         </div>
       </aside>
     );

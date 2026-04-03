@@ -22,6 +22,7 @@ type FieldRendererProps = {
   value: string | string[] | undefined;
   onChange: (fieldId: string, value: string | string[]) => void;
   disabled?: boolean;
+  primaryColor?: string;
 };
 
 export function FieldRenderer({
@@ -29,6 +30,7 @@ export function FieldRenderer({
   value,
   onChange,
   disabled,
+  primaryColor = "#4f46e5",
 }: FieldRendererProps) {
   const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -107,7 +109,7 @@ export function FieldRenderer({
   if (field.type === "radio") {
     const v = typeof value === "string" ? value : "";
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 font-sans">
         <Label className="text-base text-gray-800">
           {field.label}
           {field.required && <span className="text-red-500"> *</span>}
@@ -118,18 +120,26 @@ export function FieldRenderer({
           disabled={disabled}
           className="gap-3"
         >
-          {options.map((opt) => (
-            <label
-              key={opt}
-              className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:bg-gray-50",
-                disabled && "pointer-events-none opacity-60"
-              )}
-            >
-              <RadioGroupItem value={opt} id={`${field.id}-${opt}`} />
-              <span className="text-sm text-gray-800">{opt}</span>
-            </label>
-          ))}
+          {options.map((opt) => {
+            const isSelected = v === opt;
+            return (
+              <label
+                key={opt}
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:bg-gray-50",
+                  isSelected && "border-opacity-100",
+                  disabled && "pointer-events-none opacity-60"
+                )}
+                style={{ 
+                  borderColor: isSelected ? primaryColor : undefined,
+                  borderWidth: isSelected ? '2px' : '1px'
+                }}
+              >
+                <RadioGroupItem value={opt} id={`${field.id}-${opt}`} />
+                <span className="text-sm text-gray-800 font-medium">{opt}</span>
+              </label>
+            );
+          })}
         </RadioGroup>
       </div>
     );
@@ -144,25 +154,35 @@ export function FieldRenderer({
       onChange(field.id, Array.from(next));
     };
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 font-sans">
         <Label className="text-base text-gray-800">
           {field.label}
           {field.required && <span className="text-red-500"> *</span>}
         </Label>
         <div className="flex flex-col gap-2">
-          {options.map((opt) => (
-            <label
-              key={opt}
-              className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:bg-gray-50"
-            >
-              <Checkbox
-                checked={selected.includes(opt)}
-                onCheckedChange={(c) => toggle(opt, c === true)}
-                disabled={disabled}
-              />
-              <span className="text-sm text-gray-800">{opt}</span>
-            </label>
-          ))}
+          {options.map((opt) => {
+            const isSelected = selected.includes(opt);
+            return (
+              <label
+                key={opt}
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:bg-gray-50",
+                  isSelected && "border-opacity-100"
+                )}
+                style={{ 
+                    borderColor: isSelected ? primaryColor : undefined,
+                    borderWidth: isSelected ? '2px' : '1px'
+                }}
+              >
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={(c) => toggle(opt, c === true)}
+                  disabled={disabled}
+                />
+                <span className="text-sm text-gray-800 font-medium">{opt}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
     );

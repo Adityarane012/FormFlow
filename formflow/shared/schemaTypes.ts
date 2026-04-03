@@ -26,10 +26,17 @@ export interface FormField {
   showIf?: ShowIf;
 }
 
+export interface FormTheme {
+  primaryColor: string;
+  font: string;
+  logoUrl?: string;
+}
+
 export interface FormSchema {
   title: string;
   fields: FormField[];
   mode?: "standard" | "one-question";
+  theme?: FormTheme;
 }
 
 export interface FormResponsePayload {

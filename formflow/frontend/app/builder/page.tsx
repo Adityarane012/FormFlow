@@ -66,6 +66,7 @@ function BuilderPageContent() {
     duplicateField,
     updateField, 
     updateTitle,
+    updateTheme,
     setSchema
   } = useFormBuilder();
 
@@ -302,7 +303,7 @@ function BuilderPageContent() {
         <div
           className={cn(
             "grid flex-1 overflow-hidden transition-all duration-300 ease-in-out",
-            selectedFieldId ? "grid-cols-[280px_1fr_320px]" : "grid-cols-[280px_1fr]"
+            "grid-cols-[280px_1fr_320px]"
           )}
         >
           <FieldSidebar />
@@ -319,17 +320,17 @@ function BuilderPageContent() {
           <div
             className={cn(
               "h-full overflow-hidden border-l border-border bg-card transition-all duration-300 ease-in-out",
-              selectedFieldId ? "translate-x-0 opacity-100" : "hidden translate-x-full opacity-0"
+              "translate-x-0 opacity-100"
             )}
           >
-            {selectedFieldId && (
-              <FieldSettingsPanel 
+            <FieldSettingsPanel 
                  field={schema.fields.find(f => f.id === selectedFieldId)}
                  allFields={schema.fields}
+                 theme={schema.theme}
                  onUpdate={updateField}
+                 onUpdateTheme={updateTheme}
                  closePanel={() => setSelectedFieldId(null)}
-              />
-            )}
+            />
           </div>
         </div>
 

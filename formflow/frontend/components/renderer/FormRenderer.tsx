@@ -82,6 +82,11 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
     }
   }
 
+  const theme = schema.theme || {
+    primaryColor: "#4f46e5",
+    font: "Inter",
+  };
+
   if (schema.mode === "one-question") {
     return (
       <OneQuestionMode
@@ -92,20 +97,32 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
         submitting={submitting}
         error={error}
         title={schema.title}
+        theme={theme}
       />
     );
   }
 
   return (
-    <div className="relative mx-auto max-w-xl">
-      <div className="absolute -inset-1 -z-10 rounded-[2.5rem] bg-gradient-to-b from-gray-200/50 to-transparent opacity-50 blur-xl" />
+    <div className="relative mx-auto max-w-xl" style={{ fontFamily: theme.font }}>
+      <div className="absolute -inset-1 -z-10 rounded-[2.5rem] bg-gradient-to-b from-gray-200/50 to-transparent opacity-50 blur-xl font-sans" />
       <form
         onSubmit={onSubmit}
         className="relative space-y-10 overflow-hidden rounded-[2rem] border border-gray-100 bg-white px-8 py-12 object-cover shadow-[0_20px_40px_rgb(0,0,0,0.04)] sm:px-12 dark:bg-card dark:border-border"
       >
-        <div className="absolute left-0 right-0 top-0 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+        <div 
+          className="absolute left-0 right-0 top-0 h-1.5" 
+          style={{ backgroundColor: theme.primaryColor }}
+        />
 
         <div className="border-b border-gray-100 pb-4 dark:border-border">
+          {theme.logoUrl && (
+            <img 
+              src={theme.logoUrl} 
+              alt="Logo" 
+              className="max-h-12 w-auto mb-6 object-contain" 
+              onError={(e) => (e.currentTarget.style.display = 'none')}
+            />
+          )}
           <h1 className="text-3xl font-bold leading-tight tracking-tight text-gray-900 dark:text-foreground">
             {schema.title || "Untitled Form"}
           </h1>
@@ -123,6 +140,7 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
               value={answers[field.id]}
               onChange={(id, val) => setAnswer(id, val)}
               disabled={submitting}
+              primaryColor={theme.primaryColor}
             />
           ))}
         </div>
@@ -137,6 +155,7 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
           type="submit"
           disabled={submitting || previewMode}
           className="h-12 w-full rounded-xl text-base shadow-sm sm:w-auto sm:min-w-[160px] font-bold"
+          style={{ backgroundColor: theme.primaryColor, color: '#fff' }}
         >
           {submitting ? (
             <span className="inline-flex items-center gap-2">
