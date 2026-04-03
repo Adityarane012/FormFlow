@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FORM_TEMPLATES } from "@/lib/formTemplates";
+import { socketClient } from "@/lib/socketClient";
+import { useAuth } from "@/contexts/AuthContext";
+import { RemoteCursor } from "@/components/collaboration/RemoteCursor";
 import { 
   ChevronLeft, 
   Play, 
@@ -19,7 +22,10 @@ import {
   Upload,
   Copy,
   ExternalLink,
-  X
+  X,
+  Undo2,
+  Redo2,
+  Users
 } from "lucide-react";
 import { 
   DndContext, 
@@ -68,10 +74,93 @@ function BuilderPageContent() {
     updateTitle,
     updateTheme,
     updateMode,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     setSchema
   } = useFormBuilder();
 
+  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number; y: number; color: string; name: string }>>({});
+  const [userColor] = useState(() => `#${Math.floor(Math.random() * 16777215).toString(16)}`);
+
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const [formId, setFormId] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>("draft");
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<FieldType | null>(null);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+
+  // Sync Guard to prevent infinite loops
+  const skipNextEmit = useRef(false);
+
+  // Collaboration Connection
+  useEffect(() => {
+    const editId = searchParams.get("id") || searchParams.get("formId");
+    if (!editId || !user) return;
+    
+    setFormId(editId);
+    
+    socketClient.connectToForm(editId, { 
+      id: user.id, 
+      name: user.name || user.email.split('@')[0], 
+      color: userColor 
+    });
+    
+    socketClient.onSchemaUpdate((newSchema) => {
+      skipNextEmit.current = true;
+      setSchema(newSchema, true); // bypass history
+    });
+    
+    socketClient.onCursorMove(({ userId, x, y }) => {
+      setRemoteCursors(prev => ({
+        ...prev,
+        [userId]: { ...prev[userId], x, y }
+      }));
+    });
+    
+    socketClient.onUserPresence((users) => {
+      setCollaborators(users);
+      setRemoteCursors(prev => {
+        const next = { ...prev };
+        users.forEach(u => {
+          if (u.id !== user.id) {
+            next[u.id] = { ...next[u.id], name: u.name, color: u.color };
+          }
+        });
+        return next;
+      });
+    });
+    
+    return () => {
+      socketClient.leaveForm(editId);
+    };
+  }, [searchParams, user, setSchema, userColor]);
+
+  // Schema Sync
+  useEffect(() => {
+    if (formId && schema) {
+      if (skipNextEmit.current) {
+        skipNextEmit.current = false;
+        return;
+      }
+      socketClient.emitSchemaUpdate(formId, schema);
+    }
+  }, [schema, formId]);
+
+  // Remote Cursor Tracking
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (formId && user) {
+        socketClient.emitCursorMove(formId, user.id, e.clientX, e.clientY);
+      }
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [formId, user]);
 
   useEffect(() => {
     const templateId = searchParams.get("template");
@@ -88,7 +177,6 @@ function BuilderPageContent() {
     } else if (templateId && FORM_TEMPLATES[templateId]) {
       setSchema(FORM_TEMPLATES[templateId]);
     } else {
-      // Try to restore from localStorage (returning from preview)
       const savedSchema = localStorage.getItem("formflow_preview_schema");
       if (savedSchema) {
         try {
@@ -100,19 +188,19 @@ function BuilderPageContent() {
     }
   }, [searchParams, setSchema]);
 
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeType, setActiveType] = useState<FieldType | null>(null);
-  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
-  
-  const router = useRouter();
-  const [formId, setFormId] = useState<string | null>(null);
-  const [status, setStatus] = useState<"draft" | "published">("draft");
-  const [isSaving, setIsSaving] = useState(false);
-  const [showPublishModal, setShowPublishModal] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-  async function handleSave(newStatus: "draft" | "published" = "draft") {
+  async function handleSave(newStatus: string) {
+    if (!schema.title) {
+      toast.error("Please enter a title for your form");
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      setIsSaving(true);
       let res;
       if (formId) {
         res = await updateForm(formId, { schema, status: newStatus });
@@ -124,48 +212,29 @@ function BuilderPageContent() {
           status: newStatus,
           created_by: user?.id
         });
-        setFormId(res.id);
-        setStatus(newStatus);
+        if (res && res.id) {
+          setFormId(res.id);
+          setStatus(newStatus);
+          router.replace(`/builder?id=${res.id}`);
+        }
       }
-
-      if (newStatus === "draft") {
-        toast.success("Draft saved");
-      }
-      
-      return res?.id || formId;
-    } catch (err) {
-      console.error("Save error:", err);
-      toast.error("Failed to save the form.");
-      return null;
+      toast.success(newStatus === "published" ? "Form published!" : "Draft saved");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save form");
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function handlePublish() {
-    const id = await handleSave("published");
-    if (id) {
-      setShowPublishModal(true);
-    }
+  function handlePublish() {
+    handleSave("published");
   }
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
     setActiveId(active.id as string);
-    if (active.data.current?.type === "sidebar") {
-      setActiveType(active.data.current.fieldType);
-    }
+    setActiveType(active.data.current?.type as FieldType);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -175,28 +244,10 @@ function BuilderPageContent() {
 
     if (!over) return;
 
-    const isActiveSidebar = active.data.current?.type === "sidebar";
-    const isActiveCanvasItem = !isActiveSidebar;
+    if (active.id !== over.id) {
+      const oldIndex = schema.fields.findIndex((f) => f.id === active.id);
+      const newIndex = schema.fields.findIndex((f) => f.id === over.id);
 
-    // 1. Dropping Sidebar Item onto Canvas or into the sortable list
-    if (isActiveSidebar) {
-      if (over.id === "canvas" || schema.fields.find(f => f.id === over.id)) {
-        const type = active.data.current?.fieldType as FieldType;
-        let index = schema.fields.length;
-        
-        if (over.id !== "canvas") {
-           index = schema.fields.findIndex(f => f.id === over.id);
-        }
-        
-        addField(type, index);
-      }
-      return;
-    }
-
-    // 2. Reordering existing fields
-    if (isActiveCanvasItem && active.id !== over.id) {
-      const oldIndex = schema.fields.findIndex(f => f.id === active.id);
-      const newIndex = schema.fields.findIndex(f => f.id === over.id);
       if (oldIndex !== -1 && newIndex !== -1) {
         moveField(oldIndex, newIndex);
       }
@@ -214,7 +265,7 @@ function BuilderPageContent() {
         onDragEnd={handleDragEnd}
       >
         {/* ── Builder Header ── */}
-        <header className="relative z-10 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
+        <header className="relative z-50 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl transition-colors">
               <Link href="/">
@@ -230,45 +281,49 @@ function BuilderPageContent() {
                   placeholder="Enter form title…"
                />
              </div>
-             <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-muted/50 border border-border">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Status:</span>
-                <div className={cn(
-                  "h-2 w-2 rounded-full",
-                  status === "published" ? "bg-green-500 animate-pulse" : "bg-orange-400"
-                )} />
-                <span className="text-[11px] font-semibold capitalize text-foreground">
-                  {status}
-                </span>
+             
+             {/* Collaborative Presence */}
+             <div className="flex items-center -space-x-2 ml-4">
+                {collaborators.map((c) => (
+                  <div 
+                    key={c.id} 
+                    className="h-8 w-8 rounded-full border-2 border-card flex items-center justify-center text-[10px] font-bold text-white shadow-sm transition-transform hover:scale-110 cursor-default"
+                    style={{ backgroundColor: c.color }}
+                    title={c.name}
+                  >
+                    {c.name.substring(0, 1).toUpperCase()}
+                  </div>
+                ))}
+                {collaborators.length > 0 && (
+                  <span className="ml-4 text-[10px] font-medium text-muted-foreground animate-in fade-in slide-in-from-left-2 transition-all">
+                    {collaborators.length} user{collaborators.length > 1 ? 's' : ''} editing
+                  </span>
+                )}
              </div>
-             {status === "published" && formId && (
-               <div className="hidden lg:flex items-center gap-3 ml-2 border-l pl-4">
-                 <Link 
-                   href={`/form/${formId}`} 
-                   target="_blank"
-                   className="text-[10px] font-medium text-muted-foreground hover:text-foreground underline flex items-center gap-1"
-                 >
-                   Public Link <ExternalLink className="h-2.5 w-2.5" />
-                 </Link>
-                 <button 
-                   onClick={() => {
-                     navigator.clipboard.writeText(`${window.location.origin}/form/${formId}`);
-                     toast.success("Link copied!");
-                   }}
-                   className="text-[10px] font-medium text-muted-foreground hover:text-foreground underline flex items-center gap-1"
-                 >
-                   Copy <Copy className="h-2.5 w-2.5" />
-                 </button>
-                 <Link 
-                   href={`/dashboard/${formId}`} 
-                   className="text-[10px] font-medium text-muted-foreground hover:text-foreground underline flex items-center gap-1"
-                 >
-                   Dashboard <MousePointer2 className="h-2.5 w-2.5" />
-                 </Link>
-               </div>
-             )}
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 mr-2 bg-muted/30 p-1 rounded-xl border border-border/50">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={undo} 
+                disabled={!canUndo}
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30"
+              >
+                <Undo2 className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={redo} 
+                disabled={!canRedo}
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30"
+              >
+                <Redo2 className="h-4 w-4" />
+              </Button>
+            </div>
+
             <ThemeToggle />
             <Button onClick={() => {
               localStorage.setItem("formflow_preview_schema", JSON.stringify(schema));
@@ -300,30 +355,37 @@ function BuilderPageContent() {
           </div>
         </header>
 
-        {/* ── Builder Workspace ── */}
-        <div
-          className={cn(
-            "grid flex-1 overflow-hidden transition-all duration-300 ease-in-out",
-            "grid-cols-[280px_1fr_320px]"
-          )}
-        >
+        <main className="flex flex-1 overflow-hidden relative">
           <FieldSidebar />
           
-          <FormCanvas 
-            fields={schema.fields}
-            selectedFieldId={selectedFieldId}
-            onSelect={setSelectedFieldId}
-            onRemove={removeField}
-            onDuplicate={duplicateField}
-            onUpdate={updateField}
-          />
-          
-          <div
-            className={cn(
-              "h-full overflow-hidden border-l border-border bg-card transition-all duration-300 ease-in-out",
-              "translate-x-0 opacity-100"
-            )}
-          >
+          <div className="flex-1 overflow-y-auto px-12 py-10 relative">
+            <FormCanvas 
+              fields={schema.fields} 
+              selectedFieldId={selectedFieldId}
+              onSelect={setSelectedFieldId}
+              onRemove={removeField}
+              onDuplicate={duplicateField}
+              onUpdate={updateField}
+            />
+
+            {/* Remote Cursors Layer */}
+            {Object.entries(remoteCursors).map(([id, cursor]) => (
+              cursor.name && (
+                <RemoteCursor 
+                  key={id} 
+                  name={cursor.name} 
+                  color={cursor.color} 
+                  x={cursor.x} 
+                  y={cursor.y} 
+                />
+              )
+            ))}
+          </div>
+
+          <aside className={cn(
+            "h-full overflow-hidden border-l border-border bg-card transition-all duration-300 ease-in-out",
+            "translate-x-0 opacity-100"
+          )}>
             <FieldSettingsPanel 
                  field={schema.fields.find(f => f.id === selectedFieldId)}
                  allFields={schema.fields}
@@ -334,85 +396,28 @@ function BuilderPageContent() {
                  onUpdateMode={updateMode}
                  closePanel={() => setSelectedFieldId(null)}
             />
-          </div>
-        </div>
+          </aside>
+        </main>
 
         <DragOverlay>
           {activeId ? (
-            <div className="flex items-center gap-3 rounded-xl border-2 border-gray-900 bg-white p-3 text-sm font-semibold text-gray-900 shadow-2xl cursor-grabbing rotate-2 scale-105 transition-transform origin-top-left">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-white">
-                <ActiveIcon className="h-4 w-4" />
+            <div className="flex w-64 items-center gap-3 rounded-xl border border-blue-200 bg-white p-4 shadow-xl ring-2 ring-blue-500/20">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <ActiveIcon className="h-5 w-5" />
               </div>
-              <span className="flex-1 opacity-90">
-                {activeType ? `Add ${activeType}...` : (schema.fields.find(f => f.id === activeId)?.label || `Moving Question...`)}
-              </span>
+              <span className="text-sm font-semibold capitalize text-gray-700">{activeType}</span>
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
-
-      {/* Publish Modal */}
-      {showPublishModal && formId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Form Published</h3>
-            <p className="text-sm text-gray-500 mb-6">Your form is now live and ready to be shared with the world.</p>
-            
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 p-2 rounded-xl mb-6">
-              <Input 
-                readOnly 
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/form/${formId}`}
-                className="border-none bg-transparent shadow-none focus-visible:ring-0 text-gray-600 font-medium h-8"
-              />
-            </div>
-            
-            <div className="flex items-center gap-3 w-full">
-              <Button 
-                variant="outline" 
-                className="flex-1 gap-2 rounded-xl h-11 border-gray-200 text-gray-700 hover:bg-gray-50 font-medium shadow-sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/form/${formId}`);
-                  alert("Link copied!");
-                }}
-              >
-                <Copy className="h-4 w-4" />
-                Copy Link
-              </Button>
-              <Button 
-                 className="flex-1 gap-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white shadow-sm h-11 font-medium"
-                 asChild
-              >
-                <a href={`/form/${formId}`} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4" />
-                  Open Form
-                </a>
-              </Button>
-            </div>
-
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 h-8 w-8 rounded-full hover:bg-gray-100"
-              onClick={() => setShowPublishModal(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-import { AuthGuard } from "@/components/auth/AuthGuard";
-import { useAuth } from "@/contexts/AuthContext";
-
 export default function BuilderPage() {
   return (
-    <AuthGuard>
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading builder...</div>}>
-        <BuilderPageContent />
-      </Suspense>
-    </AuthGuard>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-muted/20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>}>
+      <BuilderPageContent />
+    </Suspense>
   );
 }

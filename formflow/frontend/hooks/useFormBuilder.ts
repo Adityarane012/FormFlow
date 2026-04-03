@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { 
   FormField, 
   FormSchema, 
@@ -11,9 +11,54 @@ import {
 import { arrayMove } from "@dnd-kit/sortable";
 
 export function useFormBuilder(initialSchema?: FormSchema) {
-  const [schema, setSchema] = useState<FormSchema>(
+  const [schema, setSchemaState] = useState<FormSchema>(
     initialSchema || { title: "Untitled form", fields: [] }
   );
+  const [history, setHistory] = useState<FormSchema[]>([]);
+  const [future, setFuture] = useState<FormSchema[]>([]);
+
+  const setSchema = useCallback((newSchema: FormSchema | ((prev: FormSchema) => FormSchema), bypassHistory = false) => {
+    setSchemaState((prev) => {
+      const resolvedSchema = typeof newSchema === "function" ? newSchema(prev) : newSchema;
+      
+      if (!bypassHistory) {
+        setHistory((h) => [...h, prev]);
+        setFuture([]); // Clear future on new change
+      }
+      
+      return resolvedSchema;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      const previous = h[h.length - 1];
+      const newHistory = h.slice(0, -1);
+      
+      setSchemaState((current) => {
+        setFuture((f) => [current, ...f]);
+        return previous;
+      });
+      
+      return newHistory;
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setFuture((f) => {
+      if (f.length === 0) return f;
+      const next = f[0];
+      const newFuture = f.slice(1);
+      
+      setSchemaState((current) => {
+        setHistory((h) => [...h, current]);
+        return next;
+      });
+      
+      return newFuture;
+    });
+  }, []);
 
   const updateTheme = useCallback((theme: Partial<FormTheme>) => {
     setSchema((prev) => ({
@@ -25,10 +70,9 @@ export function useFormBuilder(initialSchema?: FormSchema) {
         ...theme,
       },
     }));
-  }, []);
+  }, [setSchema]);
 
   const addField = useCallback((type: FieldType, index?: number) => {
-    
     let defaultLabel = "Question";
     let defaultPlaceholder = "";
 
@@ -81,32 +125,32 @@ export function useFormBuilder(initialSchema?: FormSchema) {
     });
 
     return newField;
-  }, []);
+  }, [setSchema]);
 
   const moveField = useCallback((fromIndex: number, toIndex: number) => {
     setSchema((prev) => ({
       ...prev,
       fields: arrayMove(prev.fields, fromIndex, toIndex),
     }));
-  }, []);
+  }, [setSchema]);
 
   const removeField = useCallback((id: string) => {
     setSchema((prev) => ({
       ...prev,
       fields: prev.fields.filter((f) => f.id !== id),
     }));
-  }, []);
+  }, [setSchema]);
 
   const updateField = useCallback((id: string, updates: Partial<FormField>) => {
     setSchema((prev) => ({
       ...prev,
       fields: prev.fields.map((f) => (f.id === id ? { ...f, ...updates } : f)),
     }));
-  }, []);
+  }, [setSchema]);
 
   const updateTitle = useCallback((title: string) => {
     setSchema((prev) => ({ ...prev, title }));
-  }, []);
+  }, [setSchema]);
 
   const duplicateField = useCallback((id: string) => {
     setSchema((prev) => {
@@ -124,11 +168,11 @@ export function useFormBuilder(initialSchema?: FormSchema) {
       
       return { ...prev, fields: newFields };
     });
-  }, []);
+  }, [setSchema]);
 
   const updateMode = useCallback((mode: "standard" | "one-question") => {
     setSchema((prev) => ({ ...prev, mode }));
-  }, []);
+  }, [setSchema]);
 
   return {
     schema,
@@ -140,6 +184,10 @@ export function useFormBuilder(initialSchema?: FormSchema) {
     updateTitle,
     updateTheme,
     updateMode,
+    undo,
+    redo,
+    canUndo: history.length > 0,
+    canRedo: future.length > 0,
     setSchema,
   };
 }
