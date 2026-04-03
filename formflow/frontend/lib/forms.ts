@@ -6,6 +6,8 @@ type ApiFormResponse = {
   id: string;
   title: string;
   fields: FormSchema["fields"];
+  theme?: FormSchema["theme"];
+  mode?: FormSchema["mode"];
 };
 
 /**
@@ -16,6 +18,8 @@ export async function createForm(schema: FormSchema): Promise<string> {
   const created = await apiPost<ApiFormResponse>("/forms", {
     title: schema.title,
     fields: schema.fields,
+    theme: schema.theme,
+    mode: schema.mode,
   });
   return created.id;
 }
@@ -24,6 +28,8 @@ export async function updateForm(formId: string, schema: FormSchema): Promise<vo
   await apiPatch(`/forms/${formId}`, {
     title: schema.title,
     fields: schema.fields,
+    theme: schema.theme,
+    mode: schema.mode,
   });
 }
 
@@ -40,6 +46,8 @@ export async function getForm(formId: string): Promise<{
     schema: {
       title: data.title,
       fields: data.fields ?? [],
+      theme: data.theme,
+      mode: data.mode,
     },
   };
 }

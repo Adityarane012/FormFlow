@@ -24,6 +24,7 @@ export interface FormField {
   required?: boolean;
   options?: string[];
   showIf?: ShowIf;
+  step?: number;
 }
 
 export interface FormTheme {

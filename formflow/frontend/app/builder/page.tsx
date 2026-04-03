@@ -67,6 +67,7 @@ function BuilderPageContent() {
     updateField, 
     updateTitle,
     updateTheme,
+    updateMode,
     setSchema
   } = useFormBuilder();
 
@@ -327,8 +328,10 @@ function BuilderPageContent() {
                  field={schema.fields.find(f => f.id === selectedFieldId)}
                  allFields={schema.fields}
                  theme={schema.theme}
+                 mode={schema.mode || "standard"}
                  onUpdate={updateField}
                  onUpdateTheme={updateTheme}
+                 onUpdateMode={updateMode}
                  closePanel={() => setSelectedFieldId(null)}
             />
           </div>

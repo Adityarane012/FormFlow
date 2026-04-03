@@ -126,6 +126,10 @@ export function useFormBuilder(initialSchema?: FormSchema) {
     });
   }, []);
 
+  const updateMode = useCallback((mode: "standard" | "one-question") => {
+    setSchema((prev) => ({ ...prev, mode }));
+  }, []);
+
   return {
     schema,
     addField,
@@ -135,6 +139,7 @@ export function useFormBuilder(initialSchema?: FormSchema) {
     duplicateField,
     updateTitle,
     updateTheme,
+    updateMode,
     setSchema,
   };
 }

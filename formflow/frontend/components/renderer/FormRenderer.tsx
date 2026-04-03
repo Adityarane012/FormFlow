@@ -6,7 +6,7 @@ import { isFieldVisible } from "@/lib/conditional";
 import { FieldRenderer } from "@/components/renderer/FieldRenderer";
 import { Button } from "@/components/ui/button";
 import { createResponse } from "@/lib/dataService";
-import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
+import { CheckCircle2, Loader2, RotateCcw, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 
 import { OneQuestionMode } from "@/components/forms/OneQuestionMode";
 
@@ -23,19 +23,38 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
   >({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Expose reset logic to parent if needed, but for now we follow the user's logic in the parent page.
   
+  // Multi-step state
+  const [currentStep, setCurrentStep] = useState(1);
+
+  const theme = schema.theme || {
+    primaryColor: "#4f46e5",
+    font: "Inter",
+  };
+
   const visibleFields = useMemo(() => {
     return schema.fields.filter((f) => isFieldVisible(f, answers));
   }, [schema.fields, answers]);
+
+  const totalSteps = useMemo(() => {
+    const steps = visibleFields.map(f => f.step || 1);
+    return steps.length === 0 ? 1 : Math.max(...steps);
+  }, [visibleFields]);
+
+  const stepFields = useMemo(() => {
+    return visibleFields.filter(f => (f.step || 1) === currentStep);
+  }, [visibleFields, currentStep]);
+
+  const isFirstStep = currentStep === 1;
+  const isLastStep = currentStep === totalSteps;
+  const progress = totalSteps > 1 ? Math.round(((currentStep) / totalSteps) * 100) : 0;
 
   function setAnswer(fieldId: string, value: string | string[]) {
     setAnswers((a) => ({ ...a, [fieldId]: value }));
   }
 
-  function validate(): string | null {
-    for (const f of visibleFields) {
+  function validateStep(): string | null {
+    for (const f of stepFields) {
       if (!f.required) continue;
       const v = answers[f.id];
       if (f.type === "checkbox") {
@@ -52,11 +71,26 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
     return null;
   }
 
+  const handleNext = () => {
+    const v = validateStep();
+    if (v) {
+        setError(v);
+        return;
+    }
+    setError(null);
+    setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+  };
+
+  const handlePrev = () => {
+    setError(null);
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
   async function onSubmit(e: React.FormEvent) {
     if (e && e.preventDefault) e.preventDefault();
     if (previewMode) return;
     setError(null);
-    const v = validate();
+    const v = validateStep();
     if (v) {
       setError(v);
       return;
@@ -65,8 +99,7 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
     for (const f of visibleFields) {
       const val = answers[f.id];
       if (val === undefined) continue;
-      if (Array.isArray(val)) payload[f.id] = val;
-      else payload[f.id] = val;
+      payload[f.id] = val;
     }
     setSubmitting(true);
     try {
@@ -81,11 +114,6 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
       setSubmitting(false);
     }
   }
-
-  const theme = schema.theme || {
-    primaryColor: "#4f46e5",
-    font: "Inter",
-  };
 
   if (schema.mode === "one-question") {
     return (
@@ -123,17 +151,36 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
               onError={(e) => (e.currentTarget.style.display = 'none')}
             />
           )}
+
+          {totalSteps > 1 && (
+            <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted p-1 px-2 rounded-md">
+                        Step {currentStep} of {totalSteps}
+                    </span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        {progress}% Complete
+                    </span>
+                </div>
+                <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden dark:bg-muted/30">
+                    <div 
+                        className="h-full transition-all duration-500 ease-out" 
+                        style={{ width: `${progress}%`, backgroundColor: theme.primaryColor }} 
+                    />
+                </div>
+            </div>
+          )}
+
           <h1 className="text-3xl font-bold leading-tight tracking-tight text-gray-900 dark:text-foreground">
             {schema.title || "Untitled Form"}
           </h1>
           <p className="mt-3 text-sm font-medium text-gray-500">
-            Please fill out the details below. Required fields are marked with an
-            asterisk (*).
+            {totalSteps > 1 ? `Please complete step ${currentStep} to continue.` : "Please fill out the details below."}
           </p>
         </div>
 
-        <div className="space-y-8">
-          {visibleFields.map((field) => (
+        <div className="space-y-8 min-h-[140px] animate-in fade-in slide-in-from-right-4 duration-300">
+          {stepFields.map((field) => (
             <FieldRenderer
               key={field.id}
               field={field}
@@ -143,6 +190,11 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
               primaryColor={theme.primaryColor}
             />
           ))}
+          {stepFields.length === 0 && totalSteps > 0 && (
+             <div className="py-12 text-center text-muted-foreground font-medium">
+               No fields in this step. Please proceed.
+             </div>
+          )}
         </div>
 
         {error ? (
@@ -151,23 +203,51 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
           </p>
         ) : null}
 
-        <Button
-          type="submit"
-          disabled={submitting || previewMode}
-          className="h-12 w-full rounded-xl text-base shadow-sm sm:w-auto sm:min-w-[160px] font-bold"
-          style={{ backgroundColor: theme.primaryColor, color: '#fff' }}
-        >
-          {submitting ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Submitting
-            </span>
-          ) : previewMode ? (
-            "Submit (Preview)"
-          ) : (
-            "Submit"
-          )}
-        </Button>
+        <div className="flex items-center gap-4 pt-6">
+            {!isFirstStep && (
+                <Button 
+                    type="button"
+                    variant="outline"
+                    className="h-12 rounded-xl px-6 border-gray-200"
+                    onClick={handlePrev}
+                    disabled={submitting}
+                >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Back
+                </Button>
+            )}
+
+            {!isLastStep ? (
+                <Button
+                    type="button"
+                    onClick={handleNext}
+                    className="h-12 flex-1 rounded-xl text-base shadow-sm font-bold gap-2"
+                    style={{ backgroundColor: theme.primaryColor, color: '#fff' }}
+                >
+                    Continue
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            ) : (
+                <Button
+                    type="submit"
+                    disabled={submitting || previewMode}
+                    className="h-12 flex-1 rounded-xl text-base shadow-sm font-bold gap-2"
+                    style={{ backgroundColor: theme.primaryColor, color: '#fff' }}
+                >
+                    {submitting ? (
+                        <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Submitting
+                        </>
+                    ) : (
+                        <>
+                            {previewMode ? "Submit (Preview)" : "Submit Form"}
+                            <ArrowRight className="h-4 w-4" />
+                        </>
+                    )}
+                </Button>
+            )}
+        </div>
       </form>
     </div>
   );

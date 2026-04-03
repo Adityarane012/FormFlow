@@ -18,7 +18,8 @@ import {
   X,
   Palette,
   Type as FontIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ArrowRight
 } from "lucide-react";
 import { FormField, FieldType, FormTheme } from "@shared/schemaTypes";
 import { Input } from "@/components/ui/input";
@@ -26,13 +27,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface FieldSettingsPanelProps {
   field?: FormField;
   allFields?: FormField[];
   theme?: FormTheme;
+  mode?: "standard" | "one-question";
   onUpdate?: (id: string, updates: Partial<FormField>) => void;
   onUpdateTheme?: (theme: Partial<FormTheme>) => void;
+  onUpdateMode?: (mode: "standard" | "one-question") => void;
   closePanel?: () => void;
 }
 
@@ -52,8 +56,10 @@ export function FieldSettingsPanel({
   field, 
   allFields = [],
   theme,
+  mode = "standard",
   onUpdate,
   onUpdateTheme,
+  onUpdateMode,
   closePanel
 }: FieldSettingsPanelProps) {
   // If no field is selected, show Form Appearance (Branding)
@@ -76,6 +82,41 @@ export function FieldSettingsPanel({
 
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-8">
+            {/* Layout Mode Selection */}
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                Form Layout
+                <div className="h-px flex-1 bg-gray-100" />
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-50 rounded-[1.2rem] border border-gray-100 shadow-inner">
+                <button
+                  onClick={() => onUpdateMode?.("standard")}
+                  className={cn(
+                    "flex flex-col items-center gap-2 py-3 rounded-[0.9rem] transition-all duration-300",
+                    mode === "standard" 
+                      ? "bg-white text-indigo-600 shadow-[0_4px_12px_rgb(0,0,0,0.05)] border border-indigo-100/50" 
+                      : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
+                  )}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Standard</span>
+                </button>
+                <button
+                  onClick={() => onUpdateMode?.("one-question")}
+                  className={cn(
+                    "flex flex-col items-center gap-2 py-3 rounded-[0.9rem] transition-all duration-300",
+                    mode === "one-question" 
+                      ? "bg-white text-indigo-600 shadow-[0_4px_12px_rgb(0,0,0,0.05)] border border-indigo-100/50" 
+                      : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
+                  )}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Immersive</span>
+                </button>
+              </div>
+            </div>
+
             {/* Colors Section */}
             <div className="space-y-4">
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -251,16 +292,27 @@ export function FieldSettingsPanel({
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-4">
-              <div className="space-y-0.5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="required-toggle" className="text-xs font-semibold text-gray-900">Required</Label>
-                <p className="text-[11px] text-gray-400 font-medium">Must be filled before submit</p>
+                <Switch 
+                    id="required-toggle"
+                    checked={field.required}
+                    onCheckedChange={(checked) => onUpdate?.(field.id, { required: checked })}
+                />
               </div>
-              <Switch 
-                id="required-toggle"
-                checked={field.required}
-                onCheckedChange={(checked) => onUpdate?.(field.id, { required: checked })}
-              />
+              <div className="space-y-2 text-right">
+                <Label htmlFor="step-index" className="text-xs font-semibold text-gray-900">Form Step</Label>
+                <Input 
+                    id="step-index"
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={field.step || 1}
+                    onChange={(e) => onUpdate?.(field.id, { step: parseInt(e.target.value) || 1 })}
+                    className="h-9 rounded-xl border-gray-200 text-right font-bold w-full"
+                />
+              </div>
             </div>
           </div>
 
