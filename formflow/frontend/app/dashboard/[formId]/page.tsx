@@ -3,15 +3,13 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronLeft, Table as TableIcon, Users, Clock, Download } from "lucide-react";
+import { ChevronLeft, Table as TableIcon, Users, Clock, LogOut, FileJson, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getFormById, getResponses, Form, FormResponse } from "@/lib/dataService";
 import { cn } from "@/lib/utils";
 import { ResponseCharts } from "@/components/dashboard/ResponseCharts";
-
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useAuth } from "@/contexts/AuthContext";
-import { LogOut } from "lucide-react";
 
 function DashboardPageContent() {
   const { user, logout } = useAuth();
@@ -55,7 +53,7 @@ function DashboardPageContent() {
 
   return (
     <div className="min-h-screen bg-muted/30 font-sans pb-12 dark:bg-background">
-      <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
+      <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6 shadow-sm font-sans">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl">
             <Link href="/published">
@@ -69,10 +67,11 @@ function DashboardPageContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => logout()} className="h-9 w-9 rounded-xl text-muted-foreground hover:text-red-500">
+            <Button variant="ghost" size="icon" onClick={() => logout()} className="h-9 w-9 rounded-xl text-muted-foreground hover:text-red-500 transition-colors">
                 <LogOut className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="gap-2 rounded-xl border-gray-200 dark:border-border font-medium" onClick={() => {
+            
+            <Button variant="outline" size="sm" className="gap-2 rounded-xl border-gray-200 dark:border-border font-bold shadow-sm hover:bg-muted/50 transition-all" onClick={() => {
                 const csv = [
                     form.schema.fields.map((f: any) => f.label).join(","),
                     ...responses.map((r: any) => 
@@ -88,13 +87,26 @@ function DashboardPageContent() {
                 a.href = url;
                 a.download = `${form.title}-responses.csv`;
                 a.click();
+                window.URL.revokeObjectURL(url);
             }}>
-                <Download className="h-4 w-4" />
+                <FileSpreadsheet className="h-4 w-4" />
                 Export CSV
+            </Button>
+
+            <Button variant="outline" size="sm" className="gap-2 rounded-xl border-gray-200 dark:border-border font-bold shadow-sm hover:bg-muted/50 transition-all" onClick={() => {
+                const blob = new Blob([JSON.stringify(responses, null, 2)], { type: "application/json" });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `responses-${formId}.json`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }}>
+                <FileJson className="h-4 w-4" />
+                Export JSON
             </Button>
         </div>
       </header>
-      {/* ... rest of the JSX */}
 
       <main className="mx-auto max-w-6xl p-6 space-y-8">
         {/* Stats Grid */}
@@ -104,14 +116,14 @@ function DashboardPageContent() {
             value={stats.count.toString()} 
             icon={Users} 
             color="text-blue-500" 
-            bgColor="bg-blue-50"
+            bgColor="bg-blue-50 dark:bg-blue-900/20"
           />
           <StatCard 
             title="Latest Submission" 
             value={stats.last} 
             icon={Clock} 
             color="text-emerald-500" 
-            bgColor="bg-emerald-50"
+            bgColor="bg-emerald-50 dark:bg-emerald-900/20"
             className="sm:col-span-1 lg:col-span-2"
           />
         </div>
