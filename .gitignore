@@ -1,0 +1,25 @@
+# IDEs and Tools
+.agents/
+.vscode/
+.cursor/
+.windsurf/
+.claude/
+.continue/
+*.lock
+package-lock.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Node modules
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
