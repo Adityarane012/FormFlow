@@ -3,24 +3,11 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronLeft, BarChart3, PieChart as PieChartIcon, Table as TableIcon, Users, Clock, Download } from "lucide-react";
+import { ChevronLeft, Table as TableIcon, Users, Clock, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getFormById, getResponses, Form, FormResponse } from "@/lib/dataService";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Cell,
-  PieChart,
-  Pie
-} from "recharts";
 import { cn } from "@/lib/utils";
-
-const COLORS = ["#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+import { ResponseCharts } from "@/components/dashboard/ResponseCharts";
 
 export default function DashboardPage() {
   const { formId } = useParams() as { formId: string };
@@ -50,34 +37,11 @@ export default function DashboardPage() {
     };
   }, [responses]);
 
-  const fieldAnalytics = useMemo(() => {
-    if (!form || responses.length === 0) return [];
-
-    return form.schema.fields
-      .filter((f: any) => ["radio", "select", "checkbox"].includes(f.type))
-      .map((f: any) => {
-        const counts: Record<string, number> = {};
-        f.options?.forEach((opt: string) => (counts[opt] = 0));
-
-        responses.forEach((r) => {
-          const val = r.answers[f.id];
-          if (Array.isArray(val)) {
-            val.forEach((v) => { if (counts[v] !== undefined) counts[v]++; });
-          } else if (val && counts[val] !== undefined) {
-            counts[val]++;
-          }
-        });
-
-        const data = Object.entries(counts).map(([name, value]) => ({ name, value }));
-        return { field: f, data };
-      });
-  }, [form, responses]);
-
   if (isLoading) return <div className="flex min-h-screen items-center justify-center">Loading dashboard...</div>;
-  if (!form) return <div className="flex min-h-screen items-center justify-center">Form not found.</div>;
+  if (!form) return <div className="flex min-h-screen items-center justify-center text-muted-foreground font-medium">Form not found.</div>;
 
   return (
-    <div className="min-h-screen bg-muted/30 font-sans pb-12">
+    <div className="min-h-screen bg-muted/30 font-sans pb-12 dark:bg-background">
       <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl">
@@ -92,7 +56,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2 rounded-xl" onClick={() => {
+            <Button variant="outline" size="sm" className="gap-2 rounded-xl border-gray-200 dark:border-border font-medium" onClick={() => {
                 const csv = [
                     form.schema.fields.map((f: any) => f.label).join(","),
                     ...responses.map((r: any) => 
@@ -115,9 +79,9 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl p-6">
+      <main className="mx-auto max-w-6xl p-6 space-y-8">
         {/* Stats Grid */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard 
             title="Total Responses" 
             value={stats.count.toString()} 
@@ -135,66 +99,8 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Analytics Section */}
-        {fieldAnalytics.length > 0 && (
-          <div className="mb-8">
-            <h2 className="mb-4 text-lg font-bold text-foreground">Analytics</h2>
-            <div className="grid gap-6 md:grid-cols-2">
-              {fieldAnalytics.map(({ field, data }: any, idx: number) => (
-                <div key={field.id} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                  <h3 className="mb-6 text-sm font-semibold text-foreground">{field.label}</h3>
-                  <div className="h-[240px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      {idx % 2 === 0 ? (
-                        <BarChart data={data}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fontSize: 11, fill: "#64748b" }} 
-                            dy={10}
-                          />
-                          <YAxis 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fontSize: 11, fill: "#64748b" }} 
-                          />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }}
-                          />
-                          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                            {data.map((_: any, i: number) => (
-                              <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      ) : (
-                        <PieChart>
-                          <Pie
-                            data={data}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                            label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {data.map((_: any, i: number) => (
-                              <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      )}
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Analytics Charts */}
+        <ResponseCharts schema={form.schema} responses={responses} />
 
         {/* Responses Table */}
         <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
@@ -219,13 +125,13 @@ export default function DashboardPage() {
               <tbody className="divide-y divide-border">
                 {responses.map((res) => (
                   <tr key={res.id} className="transition-colors hover:bg-muted/10">
-                    <td className="whitespace-nowrap px-6 py-4 text-xs text-muted-foreground">
+                    <td className="whitespace-nowrap px-6 py-4 text-xs text-muted-foreground font-medium">
                       {new Date(res.submitted_at).toLocaleString()}
                     </td>
                     {form.schema.fields.map((field: any) => {
                       const val = res.answers[field.id];
                       return (
-                        <td key={field.id} className="max-w-xs truncate px-6 py-4 text-foreground">
+                        <td key={field.id} className="max-w-xs truncate px-6 py-4 text-foreground/80">
                           {Array.isArray(val) ? val.join(", ") : val || "-"}
                         </td>
                       );
@@ -235,7 +141,7 @@ export default function DashboardPage() {
               </tbody>
             </table>
             {responses.length === 0 && (
-              <div className="p-12 text-center text-muted-foreground">
+              <div className="p-16 text-center text-muted-foreground font-medium">
                 No responses recorded yet.
               </div>
             )}
@@ -248,13 +154,13 @@ export default function DashboardPage() {
 
 function StatCard({ title, value, icon: Icon, color, bgColor, className }: any) {
   return (
-    <div className={cn("flex items-center gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm", className)}>
+    <div className={cn("flex items-center gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-foreground/10", className)}>
       <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl", bgColor)}>
         <Icon className={cn("h-6 w-6", color)} />
       </div>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
-        <p className="text-xl font-bold text-foreground">{value}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{title}</p>
+        <p className="text-xl font-bold text-foreground leading-none mt-1">{value}</p>
       </div>
     </div>
   );

@@ -29,6 +29,7 @@ export interface FormField {
 export interface FormSchema {
   title: string;
   fields: FormField[];
+  mode?: "standard" | "one-question";
 }
 
 export interface FormResponsePayload {

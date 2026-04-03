@@ -25,10 +25,13 @@ export default function HomePage() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
+            <Link href="/published">My published</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
             <Link href="/drafts">My drafts</Link>
           </Button>
-          <Button asChild variant="secondary" size="sm">
-            <Link href="/builder">Open builder</Link>
+          <Button asChild variant="secondary" size="sm" className="rounded-xl font-medium">
+            <Link href="/templates">Open builder</Link>
           </Button>
         </div>
       </header>
@@ -49,8 +52,8 @@ export default function HomePage() {
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button 
-            onClick={() => router.push("/builder")}
-            className="h-12 rounded-xl px-8 text-base shadow-sm gap-2"
+            onClick={() => router.push("/templates")}
+            className="h-12 rounded-xl px-8 text-base shadow-sm gap-2 font-bold"
           >
             Start building
             <ArrowRight className="h-4 w-4" />
@@ -58,7 +61,7 @@ export default function HomePage() {
           <Button 
             onClick={() => router.push("/builder")}
             variant="secondary" 
-            className="h-12 rounded-xl px-8 text-base"
+            className="h-12 rounded-xl px-8 text-base font-semibold"
           >
             Create a blank form
           </Button>

@@ -72,7 +72,7 @@ function BuilderPageContent() {
 
   useEffect(() => {
     const templateId = searchParams.get("template");
-    const editId = searchParams.get("id");
+    const editId = searchParams.get("id") || searchParams.get("formId");
 
     if (editId) {
       setFormId(editId);

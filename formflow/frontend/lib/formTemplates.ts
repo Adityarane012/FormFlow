@@ -1,119 +1,47 @@
-import { FormSchema, generateFieldId } from "@shared/schemaTypes";
-
-export const FORM_TEMPLATES: Record<string, FormSchema> = {
-  "feedback-form": {
-    title: "Feedback Form",
-    fields: [
-      {
-        id: generateFieldId(),
-        type: "text",
-        label: "Your Name",
-        required: true,
-        placeholder: "e.g. John Doe",
-      },
-      {
-        id: generateFieldId(),
-        type: "email",
-        label: "Email Address",
-        required: true,
-        placeholder: "Example: hello@world.com",
-      },
-      {
-        id: generateFieldId(),
-        type: "select",
-        label: "Overall Satisfaction",
-        required: true,
-        options: ["Very Satisfied", "Satisfied", "Neutral", "Unsatisfied"],
-      },
-      {
-        id: generateFieldId(),
-        type: "textarea",
-        label: "How can we improve?",
-        required: false,
-        placeholder: "Your suggestions...",
-      },
-    ],
+export const formTemplates = [
+  {
+    id: "feedback",
+    title: "Customer Feedback",
+    description: "Gather insights from your customers about their experience.",
+    schema: {
+      title: "Customer Feedback",
+      fields: [
+        { id: "q1", type: "text", label: "Name", required: true },
+        { id: "q2", type: "email", label: "Email" },
+        { id: "q3", type: "radio", label: "Experience", options: ["Good", "Average", "Bad"] }
+      ]
+    }
   },
-  "event-registration": {
+  {
+    id: "event",
     title: "Event Registration",
-    fields: [
-      {
-        id: generateFieldId(),
-        type: "text",
-        label: "Full Name",
-        required: true,
-      },
-      {
-        id: generateFieldId(),
-        type: "email",
-        label: "Email",
-        required: true,
-      },
-      {
-        id: generateFieldId(),
-        type: "radio",
-        label: "Will you attend in person?",
-        required: true,
-        options: ["Yes", "No, joining virtually"],
-      },
-      {
-        id: generateFieldId(),
-        type: "checkbox",
-        label: "Workshops of interest",
-        options: ["Design Thinking", "React Deep Dive", "Cloud Architecture"],
-      },
-    ],
+    description: "Easy attendee signup for your next workshop or seminar.",
+    schema: {
+      title: "Event Registration",
+      fields: [
+        { id: "q1", type: "text", label: "Full Name", required: true },
+        { id: "q2", type: "email", label: "Email", required: true },
+        { id: "q3", type: "select", label: "Session", options: ["Morning", "Afternoon", "Evening"] }
+      ]
+    }
   },
-  "job-application": {
+  {
+    id: "job",
     title: "Job Application",
-    fields: [
-      {
-        id: generateFieldId(),
-        type: "text",
-        label: "Applied Position",
-        required: true,
-        placeholder: "e.g. Senior Frontend Engineer",
-      },
-      {
-        id: generateFieldId(),
-        type: "text",
-        label: "LinkedIn Profile URL",
-        required: true,
-      },
-      {
-        id: generateFieldId(),
-        type: "file",
-        label: "Upload Resume/CV",
-        required: true,
-      },
-      {
-        id: generateFieldId(),
-        type: "textarea",
-        label: "Why do you want to join us?",
-        required: true,
-      },
-    ],
-  },
-  "customer-survey": {
-    title: "Customer Survey",
-    fields: [
-      {
-        id: generateFieldId(),
-        type: "select",
-        label: "How did you hear about us?",
-        options: ["Social Media", "Friend/Colleague", "Advertisement", "Other"],
-      },
-      {
-        id: generateFieldId(),
-        type: "radio",
-        label: "Likely to recommend us?",
-        options: ["Most Likely", "Likely", "Neutral", "Unlikely"],
-      },
-      {
-        id: generateFieldId(),
-        type: "textarea",
-        label: "Additional comments",
-      },
-    ],
-  },
-};
+    description: "Streamline your hiring process with a modern application form.",
+    schema: {
+      title: "Job Application",
+      fields: [
+        { id: "q1", type: "text", label: "Full Name" },
+        { id: "q2", type: "email", label: "Email" },
+        { id: "q3", type: "file", label: "Resume Upload" }
+      ]
+    }
+  }
+];
+
+// Compatibility alias for the existing builder calls if any
+export const FORM_TEMPLATES: Record<string, any> = {};
+formTemplates.forEach(t => {
+  FORM_TEMPLATES[t.id] = t.schema;
+});

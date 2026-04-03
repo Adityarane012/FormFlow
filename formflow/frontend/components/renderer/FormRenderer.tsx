@@ -8,20 +8,24 @@ import { Button } from "@/components/ui/button";
 import { createResponse } from "@/lib/dataService";
 import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 
+import { OneQuestionMode } from "@/components/forms/OneQuestionMode";
+
 type FormRendererProps = {
   formId: string;
   schema: FormSchema;
   previewMode?: boolean;
+  onSuccess?: () => void;
 };
 
-export function FormRenderer({ formId, schema, previewMode }: FormRendererProps) {
+export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRendererProps) {
   const [answers, setAnswers] = useState<
     Record<string, string | string[] | undefined>
   >({});
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Expose reset logic to parent if needed, but for now we follow the user's logic in the parent page.
+  
   const visibleFields = useMemo(() => {
     return schema.fields.filter((f) => isFieldVisible(f, answers));
   }, [schema.fields, answers]);
@@ -49,7 +53,7 @@ export function FormRenderer({ formId, schema, previewMode }: FormRendererProps)
   }
 
   async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (previewMode) return;
     setError(null);
     const v = validate();
@@ -70,7 +74,7 @@ export function FormRenderer({ formId, schema, previewMode }: FormRendererProps)
         form_id: formId,
         answers: payload,
       });
-      setDone(true);
+      if (onSuccess) onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -78,35 +82,17 @@ export function FormRenderer({ formId, schema, previewMode }: FormRendererProps)
     }
   }
 
-  function handleReset() {
-    setAnswers({});
-    setDone(false);
-    setError(null);
-  }
-
-  if (done) {
+  if (schema.mode === "one-question") {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-6">
-        <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-          <h2 className="mt-4 text-xl font-semibold text-gray-900">
-            Thank you for submitting the form.
-          </h2>
-          <p className="mt-2 text-sm text-gray-500">
-            Your response has been recorded successfully.
-          </p>
-          <Button
-            variant="outline"
-            className="mt-6 h-10 rounded-lg border-gray-200 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-            onClick={handleReset}
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Submit another response
-          </Button>
-        </div>
-      </div>
+      <OneQuestionMode
+        fields={visibleFields}
+        answers={answers}
+        setAnswer={setAnswer}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        error={error}
+        title={schema.title}
+      />
     );
   }
 
@@ -115,12 +101,12 @@ export function FormRenderer({ formId, schema, previewMode }: FormRendererProps)
       <div className="absolute -inset-1 -z-10 rounded-[2.5rem] bg-gradient-to-b from-gray-200/50 to-transparent opacity-50 blur-xl" />
       <form
         onSubmit={onSubmit}
-        className="relative space-y-10 overflow-hidden rounded-[2rem] border border-gray-100 bg-white px-8 py-12 object-cover shadow-[0_20px_40px_rgb(0,0,0,0.04)] sm:px-12"
+        className="relative space-y-10 overflow-hidden rounded-[2rem] border border-gray-100 bg-white px-8 py-12 object-cover shadow-[0_20px_40px_rgb(0,0,0,0.04)] sm:px-12 dark:bg-card dark:border-border"
       >
         <div className="absolute left-0 right-0 top-0 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
 
-        <div className="border-b border-gray-100 pb-4">
-          <h1 className="text-3xl font-bold leading-tight tracking-tight text-gray-900">
+        <div className="border-b border-gray-100 pb-4 dark:border-border">
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-gray-900 dark:text-foreground">
             {schema.title || "Untitled Form"}
           </h1>
           <p className="mt-3 text-sm font-medium text-gray-500">
@@ -150,7 +136,7 @@ export function FormRenderer({ formId, schema, previewMode }: FormRendererProps)
         <Button
           type="submit"
           disabled={submitting || previewMode}
-          className="h-12 w-full rounded-xl text-base shadow-sm sm:w-auto sm:min-w-[160px]"
+          className="h-12 w-full rounded-xl text-base shadow-sm sm:w-auto sm:min-w-[160px] font-bold"
         >
           {submitting ? (
             <span className="inline-flex items-center gap-2">
