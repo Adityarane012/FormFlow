@@ -7,6 +7,66 @@ async function createResponse(req, res) {
       return res.status(400).json({ error: "formId and answers required" });
     }
 
+    // Fetch form schema for validation
+    const { data: form, error: formError } = await supabase
+      .from("forms")
+      .select("schema")
+      .eq("id", formId)
+      .single();
+
+    if (formError || !form) {
+      return res.status(404).json({ error: "Form not found" });
+    }
+
+    const schema = form.schema;
+    if (schema?.fields) {
+      for (const field of schema.fields) {
+        const value = answers[field.id];
+        const valText = value === undefined || value === null ? "" : String(value).trim();
+        const validation = field.validation || (field.required ? { required: true } : {});
+
+        // Default validations
+        if (field.type === "email" && !validation.regex && valText !== "") {
+          validation.regex = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$";
+        }
+
+        // Required check
+        if (validation.required) {
+          const isEmpty = field.type === "checkbox" 
+            ? (!Array.isArray(value) || value.length === 0) 
+            : valText === "";
+          if (isEmpty) {
+            return res.status(400).json({ 
+              error: validation.message || `${field.label} is required.` 
+            });
+          }
+        }
+
+        if (valText !== "") {
+          if (validation.minLength && valText.length < validation.minLength) {
+            return res.status(400).json({ 
+              error: validation.message || `${field.label} must be at least ${validation.minLength} characters.` 
+            });
+          }
+          if (validation.maxLength && valText.length > validation.maxLength) {
+            return res.status(400).json({ 
+              error: validation.message || `${field.label} cannot exceed ${validation.maxLength} characters.` 
+            });
+          }
+          if (validation.regex) {
+            try {
+              const re = new RegExp(validation.regex);
+              if (!re.test(valText)) {
+                return res.status(400).json({ 
+                  error: validation.message || `${field.label} format is invalid.` 
+                });
+              }
+            } catch (e) {}
+          }
+        }
+      }
+    }
+
     // Insert into responses table
     const { data: response, error: responseError } = await supabase
       .from("responses")
@@ -15,7 +75,7 @@ async function createResponse(req, res) {
       .single();
 
     if (responseError || !response) {
-      return res.status(404).json({ error: "Failed to create response or Form not found" });
+      return res.status(404).json({ error: "Failed to create response" });
     }
 
     // Insert answers

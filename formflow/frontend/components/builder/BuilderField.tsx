@@ -36,6 +36,7 @@ const FIELD_ICONS: Record<FieldType, any> = {
   text: Type,
   textarea: AlignLeft,
   email: Mail,
+  number: Hash,
   select: ChevronDown,
   checkbox: CheckSquare,
   radio: RadioIcon,
@@ -70,20 +71,25 @@ export function BuilderField({
     <div
       ref={setNodeRef}
       style={style}
-      onClick={() => onSelect?.(field.id)}
+      onClick={(e) => {
+        // Only select if not dragging and not clicking on a sub-element (if needed)
+        // Actually, select logic usually is fine.
+        onSelect?.(field.id);
+      }}
       className={cn(
-        "group relative flex flex-col gap-3 rounded-[1.5rem] border border-gray-100 bg-white p-6 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-gray-200",
-        isSelected && "ring-2 ring-blue-600 border-transparent shadow-[0_8px_30px_rgb(0,0,0,0.08)] scale-[1.01] hover:border-transparent",
-        isDragging && "opacity-0 z-0 h-0 p-0 overflow-hidden"
+        "group relative flex flex-col gap-3 rounded-[1.5rem] border border-gray-100 bg-white p-6 transition-all duration-300",
+        "hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-gray-200",
+        isSelected && "ring-2 ring-blue-600 border-transparent shadow-[0_8px_30px_rgb(0,0,0,0.08)] scale-[1.01]",
+        isDragging && "opacity-80 shadow-2xl z-50 scale-[1.02] border-blue-200 ring-4 ring-blue-500/10 drop-shadow-2xl cursor-grabbing"
       )}
     >
       {/* Reorder Handle */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-3 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-all p-2 text-gray-300 hover:text-gray-900 border border-transparent hover:border-gray-100 hover:bg-gray-50 rounded-lg"
+        className="absolute -left-3 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-all p-2 text-gray-300 hover:text-indigo-600 border border-gray-100 bg-white shadow-sm rounded-xl z-20"
       >
-        <GripVertical className="h-5 w-5" strokeWidth={1} />
+        <GripVertical className="h-5 w-5" strokeWidth={1.5} />
       </div>
 
       <div className="flex items-start justify-between">

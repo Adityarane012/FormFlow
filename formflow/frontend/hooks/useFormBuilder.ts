@@ -101,6 +101,10 @@ export function useFormBuilder(initialSchema?: FormSchema) {
       case "file":
         defaultLabel = "Please upload your relevant documents";
         break;
+      case "number":
+        defaultLabel = "How many?";
+        defaultPlaceholder = "0";
+        break;
     }
 
     const newField: FormField = {

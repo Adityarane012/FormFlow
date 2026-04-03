@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 type FieldRendererProps = {
   field: FormField;
   value: string | string[] | undefined;
+  error?: string | null;
   onChange: (fieldId: string, value: string | string[]) => void;
   disabled?: boolean;
   primaryColor?: string;
@@ -28,6 +29,7 @@ type FieldRendererProps = {
 export function FieldRenderer({
   field,
   value,
+  error,
   onChange,
   disabled,
   primaryColor = "#4f46e5",
@@ -40,21 +42,32 @@ export function FieldRenderer({
     [field.options]
   );
 
-  if (field.type === "text" || field.type === "email") {
+  const errorDisplay = error || (field.type === "file" ? fileError : null);
+
+  if (field.type === "text" || field.type === "email" || field.type === "number") {
     return (
       <div className="space-y-2">
-        <Label className="text-base text-gray-800">
+        <Label className={cn("text-base text-gray-800", errorDisplay && "text-red-600")}>
           {field.label}
-          {field.required && <span className="text-red-500"> *</span>}
+          {(field.required || field.validation?.required) && <span className="text-red-500"> *</span>}
         </Label>
         <Input
-          type={field.type === "email" ? "email" : "text"}
+          type={field.type}
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(field.id, e.target.value)}
           disabled={disabled}
-          className="h-11 rounded-xl border-gray-200"
-          placeholder="Your answer"
+          className={cn(
+            "h-11 rounded-xl border-gray-200 transition-all focus:ring-2",
+            errorDisplay && "border-red-300 bg-red-50/50 focus:ring-red-500/20"
+          )}
+          style={{ "--tw-ring-color": errorDisplay ? undefined : primaryColor } as any}
+          placeholder={field.placeholder || "Your answer"}
         />
+        {errorDisplay && (
+          <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest animate-in fade-in slide-in-from-top-1">
+            {errorDisplay}
+          </p>
+        )}
       </div>
     );
   }

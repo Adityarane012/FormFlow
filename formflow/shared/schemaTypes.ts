@@ -5,6 +5,7 @@
 export type FieldType =
   | "text"
   | "email"
+  | "number"
   | "textarea"
   | "select"
   | "checkbox"
@@ -16,15 +17,24 @@ export interface ShowIf {
   equals: string;
 }
 
+export interface FieldValidation {
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  regex?: string;
+  message?: string;
+}
+
 export interface FormField {
   id: string;
   type: FieldType;
   label: string;
   placeholder?: string;
-  required?: boolean;
+  required?: boolean; // legacy, but mapping to validation.required is better
   options?: string[];
   showIf?: ShowIf;
   step?: number;
+  validation?: FieldValidation;
 }
 
 export interface FormTheme {

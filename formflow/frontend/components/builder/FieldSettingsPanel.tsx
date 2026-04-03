@@ -44,6 +44,7 @@ const FIELD_ICONS: Record<FieldType, any> = {
   text: Type,
   textarea: AlignLeft,
   email: Mail,
+  number: Hash,
   select: ChevronDown,
   checkbox: CheckSquare,
   radio: RadioIcon,
@@ -297,8 +298,11 @@ export function FieldSettingsPanel({
                 <Label htmlFor="required-toggle" className="text-xs font-semibold text-gray-900">Required</Label>
                 <Switch 
                     id="required-toggle"
-                    checked={field.required}
-                    onCheckedChange={(checked) => onUpdate?.(field.id, { required: checked })}
+                    checked={field.validation?.required || field.required}
+                    onCheckedChange={(checked) => onUpdate?.(field.id, { 
+                      validation: { ...field.validation, required: checked },
+                      required: checked 
+                    })}
                 />
               </div>
               <div className="space-y-2 text-right">
@@ -313,6 +317,69 @@ export function FieldSettingsPanel({
                     className="h-9 rounded-xl border-gray-200 text-right font-bold w-full"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Validation Section */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+              Validation
+              <div className="h-px flex-1 bg-gray-100" />
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="min-length" className="text-xs font-semibold text-gray-700">Min Length</Label>
+                <Input 
+                  id="min-length"
+                  type="number"
+                  value={field.validation?.minLength || ""}
+                  onChange={(e) => onUpdate?.(field.id, { 
+                    validation: { ...field.validation, minLength: parseInt(e.target.value) || undefined } 
+                  })}
+                  className="h-10 rounded-xl border-gray-200"
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="max-length" className="text-xs font-semibold text-gray-700">Max Length</Label>
+                <Input 
+                  id="max-length"
+                  type="number"
+                  value={field.validation?.maxLength || ""}
+                  onChange={(e) => onUpdate?.(field.id, { 
+                    validation: { ...field.validation, maxLength: parseInt(e.target.value) || undefined } 
+                  })}
+                  className="h-10 rounded-xl border-gray-200"
+                  placeholder="Unlimited"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="regex-pattern" className="text-xs font-semibold text-gray-700">Regex Pattern</Label>
+              <Input 
+                id="regex-pattern"
+                value={field.validation?.regex || ""}
+                onChange={(e) => onUpdate?.(field.id, { 
+                  validation: { ...field.validation, regex: e.target.value } 
+                })}
+                className="h-10 rounded-xl border-gray-200 font-mono text-xs"
+                placeholder="^[0-9]+$"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="error-message" className="text-xs font-semibold text-gray-700">Custom Error Message</Label>
+              <Input 
+                id="error-message"
+                value={field.validation?.message || ""}
+                onChange={(e) => onUpdate?.(field.id, { 
+                  validation: { ...field.validation, message: e.target.value } 
+                })}
+                className="h-10 rounded-xl border-gray-200"
+                placeholder="Invalid entry"
+              />
             </div>
           </div>
 

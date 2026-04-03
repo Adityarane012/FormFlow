@@ -49,40 +49,92 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
   const isLastStep = currentStep === totalSteps;
   const progress = totalSteps > 1 ? Math.round(((currentStep) / totalSteps) * 100) : 0;
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   function setAnswer(fieldId: string, value: string | string[]) {
     setAnswers((a) => ({ ...a, [fieldId]: value }));
+    // Clear error for this field when user types
+    if (fieldErrors[fieldId]) {
+      setFieldErrors(prev => {
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+      });
+    }
   }
 
-  function validateStep(): string | null {
-    for (const f of stepFields) {
-      if (!f.required) continue;
-      const v = answers[f.id];
-      if (f.type === "checkbox") {
-        if (!Array.isArray(v) || v.length === 0)
-          return `Please complete: ${f.label}`;
-      } else if (f.type === "file") {
-        if (!v || String(v).trim() === "")
-          return `Please complete: ${f.label}`;
-      } else {
-        if (v === undefined || v === null || String(v).trim() === "")
-          return `Please complete: ${f.label}`;
+  function validate(fields: FormField[]): boolean {
+    const newErrors: Record<string, string> = {};
+    let isValid = true;
+
+    for (const f of fields) {
+      const value = answers[f.id];
+      const validation = f.validation || (f.required ? { required: true } : {});
+      const valText = value === undefined || value === null ? "" : String(value).trim();
+      
+      // Default validations for types
+      if (f.type === "email" && !validation.regex && valText !== "") {
+        validation.regex = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$";
+        if (!validation.message) validation.message = "Please enter a valid email address.";
+      }
+
+      // Check Required
+      if (validation.required) {
+        let isEmpty = false;
+        if (f.type === "checkbox") {
+          isEmpty = !Array.isArray(value) || value.length === 0;
+        } else {
+          isEmpty = valText === "";
+        }
+        if (isEmpty) {
+          newErrors[f.id] = validation.message || `${f.label} is required.`;
+          isValid = false;
+          continue; // Skip further validation if empty and required
+        }
+      }
+
+      // If empty and not required, skip other validations
+      if (valText === "" && !validation.required) continue;
+
+      // Min Length
+      if (validation.minLength && valText.length < validation.minLength) {
+        newErrors[f.id] = validation.message || `${f.label} must be at least ${validation.minLength} characters.`;
+        isValid = false;
+      }
+
+      // Max Length
+      if (validation.maxLength && valText.length > validation.maxLength) {
+        newErrors[f.id] = validation.message || `${f.label} cannot exceed ${validation.maxLength} characters.`;
+        isValid = false;
+      }
+
+      // Regex
+      if (validation.regex) {
+        try {
+          const re = new RegExp(validation.regex);
+          if (!re.test(valText)) {
+            newErrors[f.id] = validation.message || `${f.label} is invalid.`;
+            isValid = false;
+          }
+        } catch (e) {
+          console.error(`Invalid regex for field ${f.id}:`, e);
+        }
       }
     }
-    return null;
+
+    setFieldErrors(newErrors);
+    return isValid;
   }
 
   const handleNext = () => {
-    const v = validateStep();
-    if (v) {
-        setError(v);
-        return;
-    }
+    if (!validate(stepFields)) return;
     setError(null);
     setCurrentStep(prev => Math.min(prev + 1, totalSteps));
   };
 
   const handlePrev = () => {
     setError(null);
+    setFieldErrors({});
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
@@ -90,11 +142,19 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
     if (e && e.preventDefault) e.preventDefault();
     if (previewMode) return;
     setError(null);
-    const v = validateStep();
-    if (v) {
-      setError(v);
+    
+    if (!validate(visibleFields)) {
+      // Find the first step that has an error and jump to it
+      const firstErrorFieldId = Object.keys(fieldErrors)[0] || stepFields.find(f => fieldErrors[f.id])?.id;
+      if (firstErrorFieldId) {
+        const errorField = schema.fields.find(f => f.id === firstErrorFieldId);
+        if (errorField && errorField.step && errorField.step !== currentStep) {
+          setCurrentStep(errorField.step);
+        }
+      }
       return;
     }
+
     const payload: Record<string, string | string[]> = {};
     for (const f of visibleFields) {
       const val = answers[f.id];
