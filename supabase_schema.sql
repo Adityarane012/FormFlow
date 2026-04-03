@@ -13,6 +13,7 @@ CREATE TABLE forms (
   user_id uuid REFERENCES users(id) ON DELETE CASCADE,
   title text NOT NULL,
   description text,
+  schema jsonb, -- Store the complete form schema as JSON
   created_at timestamptz DEFAULT now()
 );
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FORM_TEMPLATES } from "@/lib/formTemplates";
 import { 
@@ -36,13 +36,14 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { FieldSidebar, SidebarFieldItem } from "@/components/builder/FieldSidebar";
+import { FieldSidebar } from "@/components/builder/FieldSidebar";
 import { FormCanvas } from "@/components/builder/FormCanvas";
 import { FieldSettingsPanel } from "@/components/builder/FieldSettingsPanel";
 import { useFormBuilder } from "@/hooks/useFormBuilder";
 import { FormField, FieldType } from "@shared/schemaTypes";
 import { cn } from "@/lib/utils";
 import { createForm, updateForm } from "@/lib/forms";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const FIELD_ICONS: Record<FieldType, any> = {
   text: Type,
@@ -54,7 +55,7 @@ const FIELD_ICONS: Record<FieldType, any> = {
   file: Upload,
 };
 
-export default function BuilderPage() {
+function BuilderPageContent() {
   const { 
     schema, 
     addField, 
@@ -72,6 +73,16 @@ export default function BuilderPage() {
     const templateId = searchParams.get("template");
     if (templateId && FORM_TEMPLATES[templateId]) {
       setSchema(FORM_TEMPLATES[templateId]);
+    } else {
+      // Try to restore from localStorage (returning from preview)
+      const savedSchema = localStorage.getItem("formflow_preview_schema");
+      if (savedSchema) {
+        try {
+          setSchema(JSON.parse(savedSchema));
+        } catch (e) {
+          console.error("Failed to restore schema from localStorage", e);
+        }
+      }
     }
   }, [searchParams, setSchema]);
 
@@ -96,8 +107,9 @@ export default function BuilderPage() {
       }
       return currentId;
     } catch (err) {
-      console.error(err);
-      alert("Failed to save the form.");
+      console.error("Save error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      alert(`Failed to save the form.\n\nError: ${errorMessage}`);
       return null;
     } finally {
       setIsSaving(false);
@@ -168,7 +180,7 @@ export default function BuilderPage() {
   const ActiveIcon = activeType ? FIELD_ICONS[activeType] : MousePointer2;
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50 overflow-hidden font-sans">
+    <div className="flex h-screen flex-col overflow-hidden bg-muted/40 font-sans dark:bg-background">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -176,32 +188,33 @@ export default function BuilderPage() {
         onDragEnd={handleDragEnd}
       >
         {/* ── Builder Header ── */}
-        <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shrink-0 relative z-10 shadow-sm">
+        <header className="relative z-10 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl hover:bg-gray-100 transition-colors">
+            <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl transition-colors">
               <Link href="/">
-                <ChevronLeft className="h-5 w-5 text-gray-400" />
+                <ChevronLeft className="h-5 w-5 text-muted-foreground" />
               </Link>
             </Button>
             <Separator orientation="vertical" className="h-4" />
-            <div className="flex items-center gap-2 group">
+            <div className="group flex items-center gap-2">
                <Input 
-                  className="h-10 w-[240px] border-transparent bg-transparent text-sm font-semibold tracking-tight text-gray-900 group-hover:bg-gray-50 group-hover:border-gray-200 focus:bg-white focus:border-gray-300 transition-all rounded-xl pl-2 placeholder:text-gray-400"
+                  className="h-10 w-[240px] rounded-xl border-transparent bg-transparent pl-2 text-sm font-semibold tracking-tight text-foreground transition-all placeholder:text-muted-foreground group-hover:border-border group-hover:bg-muted/50 focus:border-border focus:bg-background"
                   value={schema.title}
                   onChange={(e) => updateTitle(e.target.value)}
                   placeholder="Enter form title…"
                />
-               <div className="flex bg-gray-100 h-6 w-9 items-center justify-center rounded-lg text-[10px] font-bold text-gray-400 tracking-wider uppercase">
+               <div className="flex h-6 w-9 items-center justify-center rounded-lg bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                  Auto
                </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button onClick={() => {
               localStorage.setItem("formflow_preview_schema", JSON.stringify(schema));
               router.push("/preview");
-            }} variant="ghost" size="sm" className="h-9 gap-2 rounded-xl text-gray-500 hover:text-gray-900 transition-all font-medium">
+            }} variant="ghost" size="sm" className="h-9 gap-2 rounded-xl font-medium text-muted-foreground transition-all hover:text-foreground">
               <Play className="h-3.5 w-3.5" />
               Preview
             </Button>
@@ -229,10 +242,12 @@ export default function BuilderPage() {
         </header>
 
         {/* ── Builder Workspace ── */}
-        <div className={cn(
-          "grid flex-1 overflow-hidden transition-all duration-300 ease-in-out",
-          selectedFieldId ? "grid-cols-[280px_1fr_320px]" : "grid-cols-[280px_1fr]"
-        )}>
+        <div
+          className={cn(
+            "grid flex-1 overflow-hidden transition-all duration-300 ease-in-out",
+            selectedFieldId ? "grid-cols-[280px_1fr_320px]" : "grid-cols-[280px_1fr]"
+          )}
+        >
           <FieldSidebar />
           
           <FormCanvas 
@@ -246,8 +261,8 @@ export default function BuilderPage() {
           
           <div
             className={cn(
-              "transition-all duration-300 ease-in-out h-full overflow-hidden border-l border-gray-100 bg-white",
-              selectedFieldId ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 hidden"
+              "h-full overflow-hidden border-l border-border bg-card transition-all duration-300 ease-in-out",
+              selectedFieldId ? "translate-x-0 opacity-100" : "hidden translate-x-full opacity-0"
             )}
           >
             {selectedFieldId && (
@@ -325,5 +340,19 @@ export default function BuilderPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BuilderPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-gray-50 text-sm text-gray-500">
+          Loading builder…
+        </div>
+      }
+    >
+      <BuilderPageContent />
+    </Suspense>
   );
 }

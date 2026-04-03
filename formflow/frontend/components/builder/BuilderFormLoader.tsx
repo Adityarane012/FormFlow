@@ -9,7 +9,7 @@ import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 type ApiForm = {
-  _id: string;
+  id: string;
   title: string;
   fields: FormSchema["fields"];
 };
@@ -35,7 +35,7 @@ export function BuilderFormLoader({ formId }: { formId: string }) {
           title: data.title,
           fields: data.fields ?? [],
         });
-        setResolvedId(data._id);
+        setResolvedId(data.id);
         setStatus("ready");
       } catch (e) {
         if (cancelled) return;

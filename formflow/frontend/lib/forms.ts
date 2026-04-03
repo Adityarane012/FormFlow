@@ -1,47 +1,45 @@
-import { supabase } from "@/lib/supabaseClient";
 import type { FormSchema } from "@shared/schemaTypes";
+import { apiGet, apiPatch, apiPost } from "@/lib/api";
 
-export async function createForm(schema: FormSchema) {
-  const { data, error } = await supabase
-    .from("forms")
-    .insert([
-      { 
-        title: schema.title, 
-        schema: schema 
-      }
-    ])
-    .select("id")
-    .single();
+/** API form row + normalized fields from Express → Supabase */
+type ApiFormResponse = {
+  id: string;
+  title: string;
+  fields: FormSchema["fields"];
+};
 
-  if (error) {
-    throw error;
-  }
-  return data.id as string;
+/**
+ * Create a form via the backend (service role → Supabase).
+ * Do not call Supabase from the browser for forms — avoids RLS/schema drift.
+ */
+export async function createForm(schema: FormSchema): Promise<string> {
+  const created = await apiPost<ApiFormResponse>("/forms", {
+    title: schema.title,
+    fields: schema.fields,
+  });
+  return created.id;
 }
 
-export async function updateForm(formId: string, schema: FormSchema) {
-  const { error } = await supabase
-    .from("forms")
-    .update({ 
-      title: schema.title, 
-      schema: schema 
-    })
-    .eq("id", formId);
-
-  if (error) {
-    throw error;
-  }
+export async function updateForm(formId: string, schema: FormSchema): Promise<void> {
+  await apiPatch(`/forms/${formId}`, {
+    title: schema.title,
+    fields: schema.fields,
+  });
 }
 
-export async function getForm(formId: string) {
-  const { data, error } = await supabase
-    .from("forms")
-    .select("*")
-    .eq("id", formId)
-    .single();
-
-  if (error) {
-    throw error;
-  }
-  return data;
+/** Load form for server or client; shape matches public form page expectations */
+export async function getForm(formId: string): Promise<{
+  id: string;
+  title: string;
+  schema: FormSchema;
+}> {
+  const data = await apiGet<ApiFormResponse>(`/forms/${formId}`);
+  return {
+    id: data.id,
+    title: data.title,
+    schema: {
+      title: data.title,
+      fields: data.fields ?? [],
+    },
+  };
 }

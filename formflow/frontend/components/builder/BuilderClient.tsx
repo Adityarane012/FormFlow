@@ -260,9 +260,13 @@ export function BuilderClient({ formId, initialSchema }: BuilderClientProps) {
           </section>
 
           <FieldSettingsPanel
-            field={selectedField}
+            field={selectedField ?? undefined}
             allFields={schema.fields}
-            onChange={updateField}
+            onUpdate={(id, updates) => {
+              const f = schema.fields.find((x) => x.id === id);
+              if (!f) return;
+              updateField({ ...f, ...updates });
+            }}
           />
         </div>
       </div>

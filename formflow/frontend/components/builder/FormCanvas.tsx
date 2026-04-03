@@ -38,14 +38,14 @@ export function FormCanvas({
     <main 
       ref={setNodeRef}
       className={cn(
-        "flex-1 bg-[#fbfbfb] flex flex-col items-center p-12 overflow-y-auto min-h-screen transition-colors block relative",
-        isOver && "bg-blue-50/50"
+        "relative block flex min-h-screen flex-1 flex-col items-center overflow-y-auto bg-[#fbfbfb] p-12 transition-colors dark:bg-background",
+        isOver && "bg-blue-50/50 dark:bg-blue-950/20"
       )}
     >
       {/* Subtle Dot Grid Background */}
       <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-60" />
 
-      <div className="w-full max-w-2xl bg-white/90 backdrop-blur-xl rounded-[2rem] border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-h-[800px] flex flex-col p-1 mb-20 relative z-10 transition-all">
+      <div className="relative z-10 mb-20 flex min-h-[800px] w-full max-w-2xl flex-col rounded-[2rem] border border-border bg-card/90 p-1 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl transition-all dark:border-border dark:shadow-none">
         {/* Glow effect behind canvas */}
         <div className="absolute -inset-[1px] rounded-[2rem] bg-gradient-to-b from-gray-100 to-white -z-10 blur-[2px]" />
 

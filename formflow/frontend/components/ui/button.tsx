@@ -8,12 +8,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-gray-900 text-white shadow-sm hover:bg-gray-800",
+        default:
+          "bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white",
         secondary:
-          "bg-white text-gray-800 border border-gray-200 shadow-sm hover:bg-gray-50",
-        ghost: "text-gray-700 hover:bg-gray-100",
+          "border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
+        ghost:
+          "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
         outline:
-          "border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50",
+          "border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
       },
       size: {
         default: "h-10 px-4 py-2",
