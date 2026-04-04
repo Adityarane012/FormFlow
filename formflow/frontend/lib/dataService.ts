@@ -84,7 +84,21 @@ export const updateForm = async (id: string, updates: any) => {
   
   // Reconstruct schema ONLY if schema-related updates are present
   if (updates.schema || updates.fields || updates.title) {
-    const schema = updates.schema || prevForm.schema || {};
+    // Step 2 & 4 — Save previous schema to history if it's changing
+    // We only save if there was a previous schema
+    if (prevForm.schema) {
+      const versions = [...(prevForm.schemaVersions || [])];
+      // Clone history entry to avoid mutations
+      versions.push({
+        version: versions.length + 1,
+        schema: JSON.parse(JSON.stringify(prevForm.schema)),
+        timestamp: Date.now()
+      });
+      finalUpdates.schemaVersions = versions;
+    }
+
+    // Clone the schema for the current update too, to ensure we don't accidentally modify prevForm
+    const schema = JSON.parse(JSON.stringify(updates.schema || prevForm.schema || { title: "", fields: [] }));
     if (updates.fields) {
       schema.fields = updates.fields;
     }

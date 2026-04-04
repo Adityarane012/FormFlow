@@ -28,8 +28,10 @@ import {
   Redo2,
   Users,
   UserPlus,
-  Hash
+  Hash,
+  History
 } from "lucide-react";
+
 import { 
   DndContext, 
   DragOverlay, 
@@ -51,6 +53,7 @@ import { FieldSettingsPanel } from "@/components/builder/FieldSettingsPanel";
 import { useFormBuilder } from "@/hooks/useFormBuilder";
 import { FormField, FieldType } from "@shared/schemaTypes";
 import { cn } from "@/lib/utils";
+import { VersionHistoryPanel } from "@/components/builder/VersionHistoryPanel";
 import { createForm, updateForm, getFormById } from "@/lib/dataService";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -103,6 +106,7 @@ function BuilderPageContent() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [formAccessError, setFormAccessError] = useState<string | null>(null);
   const [fullForm, setFullForm] = useState<any>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Sync Guard to prevent infinite loops
   const skipNextEmit = useRef(false);
@@ -313,6 +317,26 @@ function BuilderPageContent() {
     handleSave("published");
   }
 
+  const handleRestore = async (v: any) => {
+     try {
+       setSchema(v.schema);
+       // Step 4 — Save as new version
+       const payload = {
+         title: v.schema.title,
+         fields: v.schema.fields,
+         status: status
+       };
+       if (formId) {
+         const updated = await updateForm(formId, payload);
+         setFullForm(updated);
+       }
+       toast.success(`Restored to Version ${v.version}`);
+       setIsHistoryOpen(false);
+     } catch (err) {
+       toast.error("Failed to restore version");
+     }
+  };
+
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
     setActiveId(active.id as string);
@@ -441,6 +465,16 @@ function BuilderPageContent() {
 
             <ThemeToggle />
             <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsHistoryOpen(true)}
+                disabled={isReadOnly}
+                className="h-9 gap-2 rounded-xl font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all ml-2"
+              >
+                <History className="h-3.5 w-3.5" />
+                History
+              </Button>
+            <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => setIsShareModalOpen(true)}
@@ -563,6 +597,14 @@ function BuilderPageContent() {
           }}
         />
       )}
+
+      {/* Version History Side Panel */}
+      <VersionHistoryPanel 
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        versions={fullForm?.schemaVersions || []}
+        onRestore={handleRestore}
+      />
 
       {/* Access Denied Overlay */}
       {formAccessError && (

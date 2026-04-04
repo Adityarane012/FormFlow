@@ -18,6 +18,12 @@ export interface Collaborator {
   role: "viewer" | "editor" | "owner";
 }
 
+export interface SchemaVersion {
+  version: number;
+  schema: any;
+  timestamp: number;
+}
+
 export interface Form {
   id: string;
   title: string;
@@ -29,6 +35,7 @@ export interface Form {
   shareToken?: string;
   is_public_edit?: boolean;
   fields?: any; // Added for legacy compatibility
+  schemaVersions?: SchemaVersion[];
   created_at: number;
   updated_at: number;
 }
