@@ -62,11 +62,3 @@
     Navigate to `http://localhost:3000` to start building!
 
 ---
-
-## 🛠️ Recent Improvements
-
-*   **Fixed "Unpublish" Workflow**: Status updates now perfectly preserve all field data.
-*   **Role-Aware Access Control**: Secure redirection and UI restrictions based on user permissions.
-*   **Immutable History**: Guaranteed version snapshots that prevent data corruption during restoration.
-
-Built with ❤️ by FormFlow Team.
