@@ -9,6 +9,7 @@ const defaultLabels: Record<FieldType, string> = {
   checkbox: "Select all that apply",
   radio: "Pick one",
   file: "File upload",
+  number: "Number"
 };
 
 export function makeField(type: FieldType): FormField {

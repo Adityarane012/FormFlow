@@ -43,10 +43,15 @@ function DashboardPageContent() {
         getResponses(formId)
       ]);
       
-      if (formData && user && formData.owner_id && formData.owner_id !== user.id && !(formData.collaborators || []).includes(user.id)) {
-          setForm(null);
-          setIsLoading(false);
-          return;
+      if (formData && user && formData.owner_id && formData.owner_id !== user.id) {
+          // Check collaboration access
+          const collabs = formData.collaborators || [];
+          const hasAccess = collabs.some((c: any) => typeof c === 'string' ? c === user.id : c.userId === user.id);
+          if (!hasAccess) {
+              setForm(null);
+              setIsLoading(false);
+              return;
+          }
       }
 
       setForm(formData);
@@ -302,7 +307,7 @@ function DashboardPageContent() {
               <div className="p-16 text-center text-muted-foreground font-medium flex flex-col items-center gap-2">
                 <Search className="h-8 w-8 opacity-20 mb-2" />
                 No responses match your current filters.
-                <Button variant="link" onClick={() => {
+                <Button variant="ghost" onClick={() => {
                     setSearchQuery("");
                     setDateFilter("all");
                     setFieldFilter({ fieldId: "", value: "" });

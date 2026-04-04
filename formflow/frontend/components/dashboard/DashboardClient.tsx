@@ -131,7 +131,7 @@ export function DashboardClient({
             <ResponseTable fields={schema.fields} rows={rows} />
           </TabsContent>
           <TabsContent value="charts" className="mt-6">
-            <ResponseCharts fields={schema.fields} rows={rows} />
+            <ResponseCharts schema={{ fields: schema.fields }} responses={rows} />
           </TabsContent>
         </Tabs>
       </main>
