@@ -101,7 +101,7 @@ function BuilderPageContent() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<FieldType | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<"owner" | "editor" | "viewer">("viewer");
+  const [userRole, setUserRole] = useState<"owner" | "editor" | "viewer">("owner");
   const isReadOnly = userRole === "viewer";
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [formAccessError, setFormAccessError] = useState<string | null>(null);
