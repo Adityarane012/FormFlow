@@ -550,8 +550,8 @@ function BuilderPageContent() {
           </div>
 
           <aside className={cn(
-            "h-full overflow-hidden border-l border-border bg-card transition-all duration-300 ease-in-out",
-            "translate-x-0 opacity-100"
+            "fixed inset-y-0 right-0 z-[60] w-80 border-l border-border bg-card shadow-2xl transition-all duration-300 ease-in-out",
+            selectedFieldId ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
           )}>
             <FieldSettingsPanel 
                  field={schema.fields.find(f => f.id === selectedFieldId)}

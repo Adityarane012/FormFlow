@@ -103,17 +103,20 @@ export function BuilderField({
             <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
               {field.type}
             </p>
-            <input
-              type="text"
-              value={field.label}
-              onChange={(e) => onUpdate?.(field.id, { label: e.target.value })}
-              className="mt-0.5 border-none bg-transparent p-0 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-0 placeholder:text-gray-300"
-              placeholder="Question label..."
-            />
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={field.label}
+                onChange={(e) => onUpdate?.(field.id, { label: e.target.value })}
+                className="mt-0.5 border-none bg-transparent p-0 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-0 placeholder:text-gray-300"
+                placeholder="Question label..."
+              />
+              {field.required && <span className="text-red-500 font-bold ml-1">*</span>}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
           <Button
             variant="ghost"
             size="icon"
@@ -121,7 +124,7 @@ export function BuilderField({
               e.stopPropagation();
               onDuplicate?.(field.id);
             }}
-            className="h-8 w-8 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+            className="h-8 w-8 rounded-lg bg-white/80 backdrop-blur-sm border border-gray-100 text-gray-400 hover:text-blue-500 hover:bg-white hover:border-blue-100 shadow-sm transition-all"
           >
             <Copy className="h-4 w-4" />
           </Button>
@@ -132,7 +135,7 @@ export function BuilderField({
               e.stopPropagation();
               onRemove?.(field.id);
             }}
-            className="h-8 w-8 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            className="h-8 w-8 rounded-lg bg-white/80 backdrop-blur-sm border border-gray-100 text-gray-400 hover:text-red-500 hover:bg-white hover:border-red-100 shadow-sm transition-all"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -171,11 +174,6 @@ export function BuilderField({
         </div>
       )}
 
-      {field.required && (
-        <div className="absolute top-2 right-2 flex bg-gray-900 h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-white">
-          *
-        </div>
-      )}
     </div>
   );
 }

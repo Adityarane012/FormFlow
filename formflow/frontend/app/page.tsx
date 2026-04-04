@@ -72,8 +72,16 @@ export default function HomePage() {
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button 
+            onClick={() => router.push("/ai-form")}
+            className="h-12 rounded-xl px-8 text-base shadow-lg shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 text-white gap-2 font-bold transition-all hover:scale-105"
+          >
+            <Sparkles className="h-4 w-4 fill-current" />
+            Generate with AI
+          </Button>
+          <Button 
             onClick={() => router.push("/templates")}
-            className="h-12 rounded-xl px-8 text-base shadow-sm gap-2 font-bold"
+            variant="outline"
+            className="h-12 rounded-xl px-8 text-base shadow-sm gap-2 font-bold border-border"
           >
             Start building
             <ArrowRight className="h-4 w-4" />

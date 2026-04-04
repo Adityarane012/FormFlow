@@ -43,6 +43,12 @@ app.use("/api/upload", uploadRouter);
 app.use("/users", usersRouter);
 
 setupWebSocket(io);
-server.listen(PORT, () => {
-  console.log(`API + Socket.io listening on http://localhost:${PORT}`);
-});
+
+// Vercel Serverless compatibility
+if (process.env.NODE_ENV !== "production" || process.env.VITE_VERCEL_ENV === "preview") {
+  server.listen(PORT, () => {
+    console.log(`API + Socket.io listening on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
