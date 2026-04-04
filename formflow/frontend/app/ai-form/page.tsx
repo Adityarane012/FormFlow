@@ -83,7 +83,7 @@ export default function AIFormPage() {
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Pure Intelligence.</span>
                  </h2>
                  <p className="text-base font-medium text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                    Describe your form in plain English and let FormFlow's AI handle the schema generation instantly.
+                    Describe your form in plain English and let FormFlow&apos;s AI handle the schema generation instantly.
                  </p>
               </div>
            </div>
