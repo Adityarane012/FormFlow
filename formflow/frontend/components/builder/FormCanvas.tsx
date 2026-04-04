@@ -17,6 +17,7 @@ interface FormCanvasProps {
   onRemove?: (id: string) => void;
   onDuplicate?: (id: string) => void;
   onUpdate?: (id: string, updates: Partial<FormField>) => void;
+  editingFields?: Record<string, string>;
 }
 
 export function FormCanvas({
@@ -26,6 +27,7 @@ export function FormCanvas({
   onRemove,
   onDuplicate,
   onUpdate,
+  editingFields = {},
 }: FormCanvasProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: "canvas",
@@ -70,6 +72,7 @@ export function FormCanvas({
                 onRemove={onRemove}
                 onDuplicate={onDuplicate}
                 onUpdate={onUpdate}
+                editingBy={editingFields[field.id]}
               />
             ))}
           </SortableContext>

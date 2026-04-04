@@ -54,7 +54,7 @@ function DraftsPageContent() {
     if (!user) return;
     setIsLoading(true);
     const allForms = await getForms();
-    setDrafts(allForms.filter((f) => f.status === "draft" && f.created_by === user.id));
+    setDrafts(allForms.filter((f) => f.status === "draft"));
     setIsLoading(false);
   }
 

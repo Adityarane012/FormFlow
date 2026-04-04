@@ -9,8 +9,8 @@ const { Server } = require("socket.io");
 const formsRouter = require("./routes/forms");
 const responsesRouter = require("./routes/responses");
 const uploadRouter = require("./routes/upload");
+const usersRouter = require("./routes/users");
 const { setupWebSocket } = require("./websocket");
-const { configureCloudinary } = require("./controllers/uploadController");
 
 const PORT = process.env.PORT || 4000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3000";
@@ -39,9 +39,8 @@ app.get("/health", (_req, res) => {
 
 app.use("/forms", formsRouter);
 app.use("/responses", responsesRouter);
-app.use("/upload", uploadRouter);
-
-configureCloudinary();
+app.use("/api/upload", uploadRouter);
+app.use("/users", usersRouter);
 
 setupWebSocket(io);
 server.listen(PORT, () => {

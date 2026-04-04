@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FORM_TEMPLATES } from "@/lib/formTemplates";
 import { socketClient } from "@/lib/socketClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { RemoteCursor } from "@/components/collaboration/RemoteCursor";
+import { ShareModal } from "@/components/modals/ShareModal";
 import { 
   ChevronLeft, 
   Play, 
@@ -25,7 +26,9 @@ import {
   X,
   Undo2,
   Redo2,
-  Users
+  Users,
+  UserPlus,
+  Hash
 } from "lucide-react";
 import { 
   DndContext, 
@@ -56,6 +59,7 @@ const FIELD_ICONS: Record<FieldType, any> = {
   text: Type,
   textarea: AlignLeft,
   email: Mail,
+  number: Hash,
   select: ChevronDown,
   checkbox: CheckSquare,
   radio: RadioIcon,
@@ -84,6 +88,7 @@ function BuilderPageContent() {
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number; y: number; color: string; name: string }>>({});
   const [userColor] = useState(() => `#${Math.floor(Math.random() * 16777215).toString(16)}`);
+  const [editingFields, setEditingFields] = useState<Record<string, string>>({}); // fieldId -> userName
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -93,6 +98,11 @@ function BuilderPageContent() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<FieldType | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<"owner" | "editor" | "viewer">("viewer");
+  const isReadOnly = userRole === "viewer";
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [formAccessError, setFormAccessError] = useState<string | null>(null);
+  const [fullForm, setFullForm] = useState<any>(null);
 
   // Sync Guard to prevent infinite loops
   const skipNextEmit = useRef(false);
@@ -104,7 +114,7 @@ function BuilderPageContent() {
     
     setFormId(editId);
     
-    socketClient.connectToForm(editId, { 
+    socketClient.joinFormRoom(editId, { 
       id: user.id, 
       name: user.name || user.email.split('@')[0], 
       color: userColor 
@@ -123,7 +133,7 @@ function BuilderPageContent() {
     });
     
     socketClient.onUserPresence((users) => {
-      setCollaborators(users);
+      setCollaborators(users.filter(u => u.id !== user.id));
       setRemoteCursors(prev => {
         const next = { ...prev };
         users.forEach(u => {
@@ -134,11 +144,35 @@ function BuilderPageContent() {
         return next;
       });
     });
+
+    socketClient.onFieldEdit(({ fieldId, userId }) => {
+      setEditingFields(prev => {
+        const next = { ...prev };
+        // Remove userId from any existing field
+        Object.keys(next).forEach(fid => {
+          if (next[fid] === userId) delete next[fid];
+        });
+        // Add to new field if it exists
+        if (fieldId) {
+          const collab = collaborators.find(c => c.id === userId);
+          const userName = collab?.name || "Collaborator";
+          next[fieldId] = userName;
+        }
+        return next;
+      });
+    });
     
     return () => {
       socketClient.leaveForm(editId);
     };
-  }, [searchParams, user, setSchema, userColor]);
+  }, [searchParams, user, setSchema, userColor, collaborators]);
+
+  // Step 3: Broadcast current field focus
+  useEffect(() => {
+    if (formId && user) {
+      socketClient.emitFieldEdit(formId, selectedFieldId, user.id);
+    }
+  }, [selectedFieldId, formId, user]);
 
   // Schema Sync
   useEffect(() => {
@@ -151,11 +185,22 @@ function BuilderPageContent() {
     }
   }, [schema, formId]);
 
-  // Remote Cursor Tracking
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const lastCursorUpdate = useRef(0);
+
+  // STEP 10: Remote Cursor Tracking (Throttled & Relative)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (formId && user) {
-        socketClient.emitCursorMove(formId, user.id, e.clientX, e.clientY);
+      if (formId && user && canvasContainerRef.current) {
+        const now = Date.now();
+        if (now - lastCursorUpdate.current < 50) return; // 50ms throttle
+        
+        const rect = canvasContainerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        socketClient.emitCursorPosition(formId, user.id, x, y);
+        lastCursorUpdate.current = now;
       }
     };
     window.addEventListener("mousemove", handleMouseMove);
@@ -168,12 +213,45 @@ function BuilderPageContent() {
 
     if (editId) {
       setFormId(editId);
-      getFormById(editId).then(existingForm => {
-        if (existingForm) {
-          setSchema(existingForm.schema);
-          setStatus(existingForm.status);
-        }
-      });
+      const urlToken = searchParams.get("token");
+      
+      getFormById(editId)
+        .then(existingForm => {
+          if (existingForm) {
+            // Step 6 — Access Control
+            const isOwner = user && (existingForm.owner_id === user.id || existingForm.created_by === user.id);
+            const col = user ? (existingForm.collaborators || []).find((c: any) => 
+               typeof c === 'string' ? c === user.id : c.userId === user.id
+            ) : null;
+            const isCollaborator = !!col;
+            const isTokenMatch = urlToken && existingForm.shareToken === urlToken;
+            const canAccess = isOwner || isCollaborator || isTokenMatch || existingForm.is_public_edit;
+
+            if (!canAccess) {
+               setFormAccessError("You don't have permission to edit this form. Please request access from the owner.");
+               return;
+            }
+
+            // Set role
+            if (isOwner) setUserRole("owner");
+            else if (col?.role === "editor") setUserRole("editor");
+            else if (isTokenMatch || existingForm.is_public_edit) setUserRole("editor"); 
+            else setUserRole("viewer");
+
+            setFullForm(existingForm);
+            setSchema({
+              title: existingForm.title,
+              fields: existingForm.fields || [],
+            });
+            setStatus(existingForm.status);
+          } else {
+            setFormAccessError("Form not found. The link might be broken or the form has been deleted.");
+          }
+        })
+        .catch(err => {
+          setFormAccessError(err.message || "Failed to load form");
+          toast.error(err.message || "Permission Denied");
+        });
     } else if (templateId && FORM_TEMPLATES[templateId]) {
       setSchema(FORM_TEMPLATES[templateId]);
     } else {
@@ -202,15 +280,19 @@ function BuilderPageContent() {
     setIsSaving(true);
     try {
       let res;
+      const payload = {
+        title: schema.title,
+        fields: schema.fields,
+        status: newStatus
+      };
+
       if (formId) {
-        res = await updateForm(formId, { schema, status: newStatus });
+        res = await updateForm(formId, payload);
         setStatus(newStatus);
       } else {
         res = await createForm({ 
-          title: schema.title, 
-          schema, 
-          status: newStatus,
-          created_by: user?.id
+          ...payload,
+          ownerId: user?.id
         });
         if (res && res.id) {
           setFormId(res.id);
@@ -234,7 +316,15 @@ function BuilderPageContent() {
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
     setActiveId(active.id as string);
-    setActiveType(active.data.current?.type as FieldType);
+    const data = active.data.current;
+    if (data?.type === "sidebar") {
+      setActiveType(data.fieldType as FieldType);
+    } else {
+      const field = schema.fields.find(f => f.id === active.id);
+      if (field) {
+        setActiveType(field.type);
+      }
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -243,6 +333,21 @@ function BuilderPageContent() {
     setActiveType(null);
 
     if (!over) return;
+
+    if (active.id.toString().startsWith("palette:")) {
+      const fieldType = active.data.current?.fieldType as FieldType;
+      
+      let targetIndex = schema.fields.length;
+      if (over.id !== "canvas") {
+        const overIndex = schema.fields.findIndex((f) => f.id === over.id);
+        if (overIndex !== -1) {
+          targetIndex = overIndex;
+        }
+      }
+      
+      addField(fieldType, targetIndex);
+      return;
+    }
 
     if (active.id !== over.id) {
       const oldIndex = schema.fields.findIndex((f) => f.id === active.id);
@@ -264,7 +369,6 @@ function BuilderPageContent() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* ── Builder Header ── */}
         <header className="relative z-50 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl transition-colors">
@@ -282,7 +386,6 @@ function BuilderPageContent() {
                />
              </div>
              
-             {/* Collaborative Presence */}
              <div className="flex items-center -space-x-2 ml-4">
                 {collaborators.map((c) => (
                   <div 
@@ -296,10 +399,16 @@ function BuilderPageContent() {
                 ))}
                 {collaborators.length > 0 && (
                   <span className="ml-4 text-[10px] font-medium text-muted-foreground animate-in fade-in slide-in-from-left-2 transition-all">
-                    {collaborators.length} user{collaborators.length > 1 ? 's' : ''} editing
+                     {collaborators[0].name} {collaborators.length > 1 ? `and ${collaborators.length - 1} other${collaborators.length > 2 ? 's' : ''} are` : 'is'} editing
                   </span>
                 )}
              </div>
+             {isReadOnly && (
+               <div className="ml-4 px-2.5 py-1 rounded-lg bg-amber-50 text-[10px] font-bold text-amber-700 uppercase tracking-widest border border-amber-100 flex items-center gap-1.5 shadow-sm">
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Read Only
+               </div>
+             )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -307,7 +416,10 @@ function BuilderPageContent() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={undo} 
+                onClick={() => {
+                  undo();
+                  if (formId) socketClient.emitUndo(formId, schema);
+                }} 
                 disabled={!canUndo}
                 className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30"
               >
@@ -316,7 +428,10 @@ function BuilderPageContent() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={redo} 
+                onClick={() => {
+                  redo();
+                  if (formId) socketClient.emitRedo(formId, schema);
+                }} 
                 disabled={!canRedo}
                 className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30"
               >
@@ -325,6 +440,16 @@ function BuilderPageContent() {
             </div>
 
             <ThemeToggle />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsShareModalOpen(true)}
+              disabled={isReadOnly}
+              className="h-9 gap-2 rounded-xl font-medium text-blue-600 bg-blue-50/50 hover:bg-blue-100/50 hover:text-blue-700 transition-all ml-2"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              Share
+            </Button>
             <Button onClick={() => {
               localStorage.setItem("formflow_preview_schema", JSON.stringify(schema));
               router.push("/preview");
@@ -332,33 +457,40 @@ function BuilderPageContent() {
               <Play className="h-3.5 w-3.5" />
               Preview
             </Button>
-            <Button 
-              onClick={() => handleSave("draft")} 
-              disabled={isSaving} 
-              variant="outline" 
-              size="sm" 
-              className="h-9 gap-2 rounded-xl border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm font-medium"
-            >
-              <Save className="h-3.5 w-3.5" />
-              {isSaving ? "Saving..." : "Save draft"}
-            </Button>
-            <div className="mx-1 h-4 w-px bg-gray-200" />
-            <Button 
-              onClick={handlePublish} 
-              disabled={isSaving} 
-              size="sm" 
-              className="h-9 gap-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-all shadow-md px-5 font-semibold"
-            >
-              <Rocket className="h-3.5 w-3.5" />
-              {isSaving ? "Submitting..." : "Publish"}
-            </Button>
+            {!isReadOnly && (
+              <>
+                <Button 
+                  onClick={() => handleSave(status)} 
+                  disabled={isSaving} 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-9 gap-2 rounded-xl border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm font-medium"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  {isSaving ? "Saving..." : "Save changes"}
+                </Button>
+                <div className="mx-1 h-4 w-px bg-gray-200" />
+                <Button 
+                  onClick={handlePublish} 
+                  disabled={isSaving} 
+                  size="sm" 
+                  className="h-9 gap-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-all shadow-md px-5 font-semibold"
+                >
+                  <Rocket className="h-3.5 w-3.5" />
+                  {isSaving ? "Submitting..." : "Publish"}
+                </Button>
+              </>
+            )}
           </div>
         </header>
 
         <main className="flex flex-1 overflow-hidden relative">
-          <FieldSidebar />
+          <FieldSidebar onQuickAdd={(type) => addField(type)} />
           
-          <div className="flex-1 overflow-y-auto px-12 py-10 relative">
+          <div 
+            ref={canvasContainerRef}
+            className="flex-1 overflow-y-auto px-12 py-10 relative"
+          >
             <FormCanvas 
               fields={schema.fields} 
               selectedFieldId={selectedFieldId}
@@ -366,6 +498,7 @@ function BuilderPageContent() {
               onRemove={removeField}
               onDuplicate={duplicateField}
               onUpdate={updateField}
+              editingFields={editingFields}
             />
 
             {/* Remote Cursors Layer */}
@@ -410,6 +543,46 @@ function BuilderPageContent() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Share Modal */}
+      {formId && (
+        <ShareModal
+          formId={formId}
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          publicUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/builder/${formId}${fullForm?.shareToken ? `?token=${fullForm.shareToken}` : ''}`}
+          isPublicEdit={fullForm?.is_public_edit}
+          onTogglePublic={async (val) => {
+            try {
+              const updated = await updateForm(formId, { is_public_edit: val });
+              setFullForm(updated);
+              toast.success(`Public edit access ${val ? 'enabled' : 'disabled'}`);
+            } catch (err) {
+              toast.error("Failed to update access settings");
+            }
+          }}
+        />
+      )}
+
+      {/* Access Denied Overlay */}
+      {formAccessError && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-background/90 backdrop-blur-md">
+          <div className="w-full max-w-sm text-center space-y-6 animate-in zoom-in-95 duration-300">
+             <div className="mx-auto h-20 w-20 rounded-3xl bg-red-50 flex items-center justify-center text-red-600 shadow-xl shadow-red-100 drop-shadow-sm border border-red-100">
+                <X className="h-10 w-10" />
+             </div>
+             <div className="space-y-2">
+                <h2 className="text-2xl font-bold tracking-tight">Access Denied</h2>
+                <p className="text-muted-foreground font-medium leading-relaxed">
+                   {formAccessError}
+                </p>
+             </div>
+             <Button variant="outline" size="lg" className="w-full rounded-2xl h-12 font-bold shadow-sm" asChild>
+                <Link href="/">Return to Dashboard</Link>
+             </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

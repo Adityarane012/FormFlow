@@ -13,7 +13,8 @@ import {
   Search, 
   Clock, 
   CheckCircle2,
-  LogOut
+  LogOut,
+  Share2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/utils";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useAuth } from "@/contexts/AuthContext";
+import { ShareModal } from "@/components/modals/ShareModal";
 
 function PublishedPageContent() {
   const { user, logout } = useAuth();
@@ -33,6 +35,7 @@ function PublishedPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"updated" | "created" | "alpha">("updated");
+  const [sharingForm, setSharingForm] = useState<Form | null>(null);
   
   const router = useRouter();
 
@@ -44,7 +47,7 @@ function PublishedPageContent() {
     if (!user) return;
     setIsLoading(true);
     const allForms = await getForms();
-    setPublishedForms(allForms.filter((f) => f.status === "published" && f.created_by === user.id));
+    setPublishedForms(allForms.filter((f) => f.status === "published"));
     setIsLoading(false);
   }
 
@@ -68,6 +71,7 @@ function PublishedPageContent() {
       const ok = await updateForm(id, { status: "draft" });
       if (ok) {
         toast.success("Form unpublished and moved to drafts");
+        setPublishedForms((prev) => prev.filter((f) => f.id !== id));
         router.push("/drafts");
       } else {
         toast.error("Failed to unpublish form");
@@ -200,6 +204,15 @@ function PublishedPageContent() {
                     Copy Link
                   </Button>
                   <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-9 gap-1.5 rounded-xl text-xs font-semibold text-blue-600 border-blue-100 bg-blue-50/30 hover:bg-blue-50 hover:border-blue-200"
+                    onClick={() => setSharingForm(form)}
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    Share
+                  </Button>
+                  <Button 
                     variant="ghost" 
                     size="sm" 
                     className="h-9 gap-1.5 rounded-xl text-xs font-bold text-muted-foreground hover:text-red-500"
@@ -212,6 +225,23 @@ function PublishedPageContent() {
               </div>
             ))}
           </div>
+        )}
+
+        {sharingForm && (
+          <ShareModal
+            formId={sharingForm.id}
+            isOpen={!!sharingForm}
+            onClose={() => setSharingForm(null)}
+            publicUrl={`${window.location.origin}/builder/${sharingForm.id}${sharingForm.shareToken ? `?token=${sharingForm.shareToken}` : ''}`}
+            isPublicEdit={sharingForm.is_public_edit}
+            onTogglePublic={async (val) => {
+              const updated = await updateForm(sharingForm.id, { is_public_edit: val });
+              if (updated) {
+                setPublishedForms(prev => prev.map(f => f.id === sharingForm.id ? { ...f, is_public_edit: val } : f));
+                setSharingForm({ ...sharingForm, is_public_edit: val });
+              }
+            }}
+          />
         )}
       </main>
     </div>

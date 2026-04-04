@@ -6,6 +6,7 @@ import { isFieldVisible } from "@/lib/conditional";
 import { FieldRenderer } from "@/components/renderer/FieldRenderer";
 import { Button } from "@/components/ui/button";
 import { createResponse } from "@/lib/dataService";
+import { uploadFile } from "@/lib/api";
 import { CheckCircle2, Loader2, RotateCcw, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 
 import { OneQuestionMode } from "@/components/forms/OneQuestionMode";
@@ -22,6 +23,7 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
     Record<string, string | string[] | undefined>
   >({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingFields, setUploadingFields] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   
   // Multi-step state
@@ -144,7 +146,6 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
     setError(null);
     
     if (!validate(visibleFields)) {
-      // Find the first step that has an error and jump to it
       const firstErrorFieldId = Object.keys(fieldErrors)[0] || stepFields.find(f => fieldErrors[f.id])?.id;
       if (firstErrorFieldId) {
         const errorField = schema.fields.find(f => f.id === firstErrorFieldId);
@@ -155,21 +156,45 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
       return;
     }
 
-    const payload: Record<string, string | string[]> = {};
-    for (const f of visibleFields) {
-      const val = answers[f.id];
-      if (val === undefined) continue;
-      payload[f.id] = val;
-    }
     setSubmitting(true);
+    
     try {
+      const payload: Record<string, string | string[]> = {};
+      
+      // Perform uploads first for any File objects
+      for (const f of visibleFields) {
+        let val = answers[f.id];
+        if (val === undefined) continue;
+
+        if (f.type === "file" && val instanceof File) {
+          setUploadingFields(prev => new Set(prev).add(f.id));
+          try {
+            const { url } = await uploadFile(val as File);
+            val = url;
+            // Update the source answers too so the UI reflects the upload
+            setAnswers(prev => ({ ...prev, [f.id]: url }));
+          } catch (err) {
+            setError(`Failed to upload ${f.label}`);
+            throw err;
+          } finally {
+            setUploadingFields(prev => {
+              const next = new Set(prev);
+              next.delete(f.id);
+              return next;
+            });
+          }
+        }
+        payload[f.id] = val as string | string[];
+      }
+
       await createResponse({
         form_id: formId,
         answers: payload,
       });
+      
       if (onSuccess) onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      if (!error) setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSubmitting(false);
     }
@@ -186,6 +211,7 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
         error={error}
         title={schema.title}
         theme={theme}
+        isUploading={uploadingFields.size > 0}
       />
     );
   }
@@ -248,6 +274,7 @@ export function FormRenderer({ formId, schema, previewMode, onSuccess }: FormRen
               onChange={(id, val) => setAnswer(id, val)}
               disabled={submitting}
               primaryColor={theme.primaryColor}
+              isUploading={uploadingFields.has(field.id)}
             />
           ))}
           {stepFields.length === 0 && totalSteps > 0 && (

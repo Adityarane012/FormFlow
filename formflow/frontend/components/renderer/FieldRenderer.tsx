@@ -24,6 +24,7 @@ type FieldRendererProps = {
   onChange: (fieldId: string, value: string | string[]) => void;
   disabled?: boolean;
   primaryColor?: string;
+  isUploading?: boolean;
 };
 
 export function FieldRenderer({
@@ -33,8 +34,8 @@ export function FieldRenderer({
   onChange,
   disabled,
   primaryColor = "#4f46e5",
+  isUploading = false,
 }: FieldRendererProps) {
-  const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
 
   const options = useMemo(
@@ -202,7 +203,10 @@ export function FieldRenderer({
   }
 
   if (field.type === "file") {
+    const isFileObject = value instanceof File;
     const url = typeof value === "string" ? value : "";
+    const fileName = isFileObject ? (value as File).name : "";
+
     return (
       <div className="space-y-2">
         <Label className="text-base text-gray-800">
@@ -212,30 +216,30 @@ export function FieldRenderer({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Input
             type="file"
-            disabled={disabled || uploading}
+            disabled={disabled || isUploading}
             className="h-11 cursor-pointer rounded-xl border-gray-200"
-            onChange={async (e) => {
+            onChange={(e) => {
               const file = e.target.files?.[0];
               if (!file) return;
               setFileError(null);
-              setUploading(true);
-              try {
-                const { url: uploaded } = await uploadFile(file);
-                onChange(field.id, uploaded);
-              } catch (err) {
-                setFileError(
-                  err instanceof Error ? err.message : "Upload failed"
-                );
-              } finally {
-                setUploading(false);
-              }
+              onChange(field.id, file as any);
             }}
           />
-          {uploading && (
-            <span className="text-sm text-gray-500">Uploading…</span>
+          {isUploading && (
+            <span className="flex items-center gap-2 text-sm text-blue-600 font-medium animate-pulse">
+              <span className="h-2 w-2 rounded-full bg-blue-600" />
+              Uploading…
+            </span>
           )}
         </div>
-        {url ? (
+
+        {isFileObject && (
+          <p className="text-sm font-medium text-blue-600 bg-blue-50/50 p-2 rounded-lg border border-blue-100/50">
+            Selected: {fileName}
+          </p>
+        )}
+
+        {url && !isFileObject ? (
           <a
             href={url}
             target="_blank"

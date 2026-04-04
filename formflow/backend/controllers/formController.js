@@ -1,11 +1,56 @@
 const { supabase } = require("../lib/supabaseClient");
 
+async function getForms(req, res) {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+
+    // Get forms where user is owner
+    const { data: ownedForms, error: ownedError } = await supabase
+      .from("forms")
+      .select("*")
+      .eq("owner_id", userId)
+      .order("updated_at", { ascending: false });
+
+    if (ownedError) throw ownedError;
+
+    // Get forms where user is a collaborator
+    const { data: collabForms, error: collabError } = await supabase
+      .from("forms")
+      .select("*")
+      .contains("collaborators", [userId])
+      .order("updated_at", { ascending: false });
+
+    if (collabError) throw collabError;
+
+    // Merge and deduplicate
+    const allForms = [...(ownedForms || []), ...(collabForms || [])];
+    const seen = new Set();
+    const unique = allForms.filter(f => {
+      if (seen.has(f.id)) return false;
+      seen.add(f.id);
+      return true;
+    });
+
+    res.json(unique);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch forms" });
+  }
+}
+
 async function createForm(req, res) {
   try {
     const { title = "Untitled form", fields = [] } = req.body;
     const { data: form, error: formError } = await supabase
       .from("forms")
-      .insert({ title })
+      .insert({ 
+        title, 
+        status: req.body.status || "draft",
+        owner_id: req.body.ownerId || null,
+        collaborators: [],
+        is_public_edit: false
+      })
       .select("*")
       .single();
 
@@ -44,6 +89,16 @@ async function getForm(req, res) {
 
     if (formError || !form) return res.status(404).json({ error: "Form not found" });
 
+    // Step 4: Permission Check
+    const userId = req.query.userId;
+    const isOwner = form.owner_id === userId;
+    const isCollaborator = form.collaborators && form.collaborators.includes(userId);
+    const isPublic = form.is_public_edit;
+
+    if (!isOwner && !isCollaborator && !isPublic && userId !== "system") {
+      return res.status(403).json({ error: "Access Denied: You do not have permission to edit this form." });
+    }
+
     const { data: fields, error: fieldsError } = await supabase
       .from("form_fields")
       .select("*")
@@ -71,12 +126,34 @@ async function getForm(req, res) {
 
 async function updateForm(req, res) {
   try {
-    const { title, fields } = req.body;
+    const { title, fields, status, collaborators, isPublicEdit, userId } = req.body;
 
-    if (title !== undefined) {
+    // Fetch form to check permissions
+    const { data: form, error: findError } = await supabase
+      .from("forms")
+      .select("*")
+      .eq("id", req.params.id)
+      .single();
+    
+    if (findError || !form) return res.status(404).json({ error: "Form not found" });
+
+    const isOwner = form.owner_id === userId;
+    const isCollaborator = form.collaborators && form.collaborators.includes(userId);
+    
+    if (!isOwner && !isCollaborator && userId !== "system") {
+      return res.status(403).json({ error: "Permission Denied" });
+    }
+
+    const updates = {};
+    if (title !== undefined) updates.title = title;
+    if (status !== undefined) updates.status = status;
+    if (collaborators !== undefined) updates.collaborators = collaborators;
+    if (isPublicEdit !== undefined) updates.is_public_edit = isPublicEdit;
+
+    if (Object.keys(updates).length > 0) {
       const { error: formError } = await supabase
         .from("forms")
-        .update({ title })
+        .update(updates)
         .eq("id", req.params.id);
       if (formError) throw formError;
     }
@@ -142,4 +219,4 @@ async function updateForm(req, res) {
   }
 }
 
-module.exports = { createForm, getForm, updateForm };
+module.exports = { getForms, createForm, getForm, updateForm };

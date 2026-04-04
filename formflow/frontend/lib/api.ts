@@ -58,7 +58,7 @@ export function getApiBase() {
 export async function uploadFile(file: File): Promise<{ url: string }> {
   const fd = new FormData();
   fd.append("file", file);
-  const res = await safeFetch(`${API_BASE}/upload`, {
+  const res = await safeFetch(`${API_BASE}/api/upload`, {
     method: "POST",
     body: fd,
   });

@@ -19,6 +19,7 @@ interface OneQuestionModeProps {
     font: string;
     logoUrl?: string;
   };
+  isUploading?: boolean;
 }
 
 export function OneQuestionMode({ 
@@ -29,7 +30,8 @@ export function OneQuestionMode({
   submitting, 
   error,
   title,
-  theme
+  theme,
+  isUploading = false,
 }: OneQuestionModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentField = fields[currentIndex];
@@ -90,6 +92,7 @@ export function OneQuestionMode({
                 onChange={setAnswer}
                 disabled={submitting}
                 primaryColor={theme.primaryColor}
+                isUploading={isUploading}
             />
         </div>
 

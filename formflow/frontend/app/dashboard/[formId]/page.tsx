@@ -43,7 +43,7 @@ function DashboardPageContent() {
         getResponses(formId)
       ]);
       
-      if (formData && user && formData.created_by !== user.id) {
+      if (formData && user && formData.owner_id && formData.owner_id !== user.id && !(formData.collaborators || []).includes(user.id)) {
           setForm(null);
           setIsLoading(false);
           return;
@@ -129,9 +129,9 @@ function DashboardPageContent() {
             
             <Button variant="outline" size="sm" className="gap-2 rounded-xl border-gray-200 dark:border-border font-bold" onClick={() => {
                 const csv = [
-                    form.schema.fields.map((f: any) => f.label).join(","),
+                    form.fields.map((f: any) => f.label).join(","),
                     ...filteredResponses.map((r: any) => 
-                        form.schema.fields.map((f: any) => {
+                        form.fields.map((f: any) => {
                             const v = r.answers[f.id];
                             return Array.isArray(v) ? `"${v.join("; ")}"` : `"${v || ""}"`;
                         }).join(",")
@@ -185,7 +185,7 @@ function DashboardPageContent() {
         </div>
 
         {/* Analytics Charts */}
-        <ResponseCharts schema={form.schema} responses={filteredResponses} />
+        <ResponseCharts schema={{ fields: form.fields }} responses={filteredResponses} />
 
         {/* Responses Table Section */}
         <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
@@ -239,7 +239,7 @@ function DashboardPageContent() {
                         onChange={(e) => setFieldFilter({ ...fieldFilter, fieldId: e.target.value, value: "" })}
                     >
                         <option value="">Filter by question...</option>
-                        {form.schema.fields.filter((f: any) => ["select", "radio", "checkbox"].includes(f.type)).map((f: any) => (
+                        {form.fields.filter((f: any) => ["select", "radio", "checkbox"].includes(f.type)).map((f: any) => (
                             <option key={f.id} value={f.id}>{f.label}</option>
                         ))}
                     </select>
@@ -250,7 +250,7 @@ function DashboardPageContent() {
                             onChange={(e) => setFieldFilter({ ...fieldFilter, value: e.target.value })}
                         >
                             <option value="">Select value...</option>
-                            {form.schema.fields.find((f: any) => f.id === fieldFilter.fieldId)?.options?.map((opt: string) => (
+                            {form.fields.find((f: any) => f.id === fieldFilter.fieldId)?.options?.map((opt: string) => (
                                 <option key={opt} value={opt}>{opt}</option>
                             ))}
                         </select>
@@ -273,7 +273,7 @@ function DashboardPageContent() {
               <thead className="border-b border-border bg-muted/30">
                 <tr>
                   <th className="px-6 py-4 font-semibold text-foreground">Submitted</th>
-                  {form.schema.fields.map((field: any) => (
+                  {form.fields.map((field: any) => (
                     <th key={field.id} className="px-6 py-4 font-semibold text-foreground">
                       {field.label}
                     </th>
@@ -286,7 +286,7 @@ function DashboardPageContent() {
                     <td className="whitespace-nowrap px-6 py-4 text-xs text-muted-foreground font-medium">
                       {new Date(res.submitted_at).toLocaleString()}
                     </td>
-                    {form.schema.fields.map((field: any) => {
+                    {form.fields.map((field: any) => {
                       const val = res.answers[field.id];
                       return (
                         <td key={field.id} className="max-w-xs truncate px-6 py-4 text-foreground/80">

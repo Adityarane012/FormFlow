@@ -30,6 +30,7 @@ interface BuilderFieldProps {
   onRemove?: (id: string) => void;
   onDuplicate?: (id: string) => void;
   onUpdate?: (id: string, updates: Partial<FormField>) => void;
+  editingBy?: string;
 }
 
 const FIELD_ICONS: Record<FieldType, any> = {
@@ -49,7 +50,8 @@ export function BuilderField({
   onSelect, 
   onRemove, 
   onDuplicate,
-  onUpdate 
+  onUpdate,
+  editingBy
 }: BuilderFieldProps) {
   const {
     attributes,
@@ -161,6 +163,13 @@ export function BuilderField({
           </div>
         )}
       </div>
+
+      {editingBy && (
+        <div className="absolute -top-2.5 right-6 flex items-center gap-1.5 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md animate-in zoom-in-95 duration-200 ring-2 ring-white">
+          <div className="h-1 w-1 animate-pulse rounded-full bg-white" />
+          {editingBy} editing...
+        </div>
+      )}
 
       {field.required && (
         <div className="absolute top-2 right-2 flex bg-gray-900 h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-white">

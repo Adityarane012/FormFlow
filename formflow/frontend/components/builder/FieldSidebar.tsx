@@ -11,6 +11,7 @@ import {
   CheckSquare,
   Upload,
   GripVertical,
+  Hash
 } from "lucide-react";
 import { FieldType } from "@shared/schemaTypes";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ const FIELD_GROUPS = [
       { id: "text", label: "Short Text", icon: Type },
       { id: "textarea", label: "Long Text", icon: AlignLeft },
       { id: "email", label: "Email", icon: Mail },
+      { id: "number", label: "Number", icon: Hash },
     ],
   },
   {

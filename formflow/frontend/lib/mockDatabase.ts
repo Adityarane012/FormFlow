@@ -13,12 +13,22 @@ export interface User {
   created_at: number;
 }
 
+export interface Collaborator {
+  userId: string;
+  role: "viewer" | "editor" | "owner";
+}
+
 export interface Form {
   id: string;
   title: string;
   schema: any;
   status: "draft" | "published";
   created_by?: string;
+  owner_id?: string;
+  collaborators?: Collaborator[];
+  shareToken?: string;
+  is_public_edit?: boolean;
+  fields?: any; // Added for legacy compatibility
   created_at: number;
   updated_at: number;
 }
@@ -53,6 +63,11 @@ export const getUsers = (): User[] => {
 export const findUserByEmail = (email: string): User | null => {
   const users = getUsers();
   return users.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
+};
+
+export const findUserById = (id: string): User | null => {
+  const users = getUsers();
+  return users.find((u) => u.id === id) || null;
 };
 
 export const saveUser = (user: Omit<User, "id" | "created_at">): User => {

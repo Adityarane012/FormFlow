@@ -20,6 +20,7 @@ export function BuilderFormLoader({ formId }: { formId: string }) {
   );
   const [schema, setSchema] = useState<FormSchema | null>(null);
   const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [fullForm, setFullForm] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,18 +30,46 @@ export function BuilderFormLoader({ formId }: { formId: string }) {
       setStatus("loading");
       setError(null);
       try {
-        const data = await apiGet<ApiForm>(`/forms/${formId}`);
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get("token");
+        
+        // Use dataService instead of apiGet to leverage mock logic and permissions
+        const { getFormById } = await import("@/lib/dataService");
+        const { getCurrentUser } = await import("@/lib/authService");
+        
+        const form = await getFormById(formId);
+        const user = getCurrentUser();
+
         if (cancelled) return;
+        if (!form) {
+            setError("Form not found.");
+            setStatus("error");
+            return;
+        }
+
+        // Access Control Logic
+        const isOwner = user && (form.owner_id === user.id || form.created_by === user.id);
+        const isCollaborator = user && form.collaborators?.some((c: any) => c.userId === user.id);
+        const isTokenMatch = urlToken && form.shareToken === urlToken;
+        const canEdit = isOwner || isCollaborator || isTokenMatch || form.is_public_edit;
+
+        if (!canEdit) {
+            setError("Access Denied. You do not have permission to edit this form.");
+            setStatus("error");
+            return;
+        }
+
         setSchema({
-          title: data.title,
-          fields: data.fields ?? [],
+          title: form.title,
+          fields: form.fields ?? [],
         });
-        setResolvedId(data.id);
+        setResolvedId(form.id);
+        setFullForm(form);
         setStatus("ready");
       } catch (e) {
         if (cancelled) return;
         const msg =
-          e instanceof Error ? e.message : "Could not load form from the API.";
+          e instanceof Error ? e.message : "Could not load form.";
         setError(msg);
         setStatus("error");
       }
